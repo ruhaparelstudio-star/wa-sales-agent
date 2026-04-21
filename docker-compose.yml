@@ -1,0 +1,185 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    container_name: sales_agent_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+      - ./docker/app/www-overrides.conf:/usr/local/etc/php-fpm.d/zz-www-overrides.conf:ro
+    command: >
+      sh -lc "mkdir -p /var/www/storage/framework/cache
+      /var/www/storage/framework/sessions
+      /var/www/storage/framework/views
+      /var/www/storage/logs
+      /var/www/storage/app/public
+      /var/www/bootstrap/cache
+      && chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+      && php-fpm -F"
+    environment:
+      BAILEYS_BASE_URL: http://baileys-svc:3001
+      BAILEYS_SECRET: ${BAILEYS_SECRET:-changeme_in_production}
+    networks:
+      - sales_agent_net
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(0);'"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      baileys-svc:
+        condition: service_healthy
+
+  baileys-svc:
+    build:
+      context: ./baileys-svc
+      dockerfile: Dockerfile
+    container_name: sales_agent_baileys
+    restart: unless-stopped
+    ports:
+      - "${FORWARD_BAILEYS_PORT:-3001}:3001"
+    volumes:
+      - baileys_sessions:/app/sessions
+      - ./storage:/app/storage
+    environment:
+      PORT: 3001
+      BAILEYS_SECRET: ${BAILEYS_SECRET:-changeme_in_production}
+      LARAVEL_WEBHOOK_URL: ${LARAVEL_WEBHOOK_URL:-http://nginx/api/whatsapp/webhook}
+      LOG_LEVEL: ${BAILEYS_LOG_LEVEL:-info}
+    networks:
+      - sales_agent_net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: sales_agent_nginx
+    restart: unless-stopped
+    ports:
+      - "${FORWARD_APP_PORT:-8080}:80"
+    volumes:
+      - .:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - sales_agent_net
+    depends_on:
+      app:
+        condition: service_healthy
+      baileys-svc:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    container_name: sales_agent_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-secret}
+      MYSQL_DATABASE: ${DB_DATABASE:-sales_agent}
+      MYSQL_USER: ${DB_USERNAME:-sail}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
+    ports:
+      - "${FORWARD_DB_PORT:-3307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - sales_agent_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: sales_agent_redis
+    restart: unless-stopped
+    ports:
+      - "${FORWARD_REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - sales_agent_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  horizon:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    container_name: sales_agent_horizon
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+    command: >
+      sh -lc "mkdir -p /var/www/storage/framework/cache
+      /var/www/storage/framework/sessions
+      /var/www/storage/framework/views
+      /var/www/storage/logs
+      /var/www/storage/app/public
+      /var/www/bootstrap/cache
+      && chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+      && php artisan horizon"
+    networks:
+      - sales_agent_net
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    container_name: sales_agent_scheduler
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+    command: >
+      sh -lc "mkdir -p /var/www/storage/logs
+      && chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+      && while true; do
+        php artisan schedule:run --verbose --no-interaction >> /var/www/storage/logs/scheduler.log 2>&1;
+        sleep 60;
+      done"
+    networks:
+      - sales_agent_net
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: sales_agent_mailpit
+    restart: unless-stopped
+    ports:
+      - "${FORWARD_MAILPIT_PORT:-8025}:8025"
+      - "${FORWARD_SMTP_PORT:-1025}:1025"
+    networks:
+      - sales_agent_net
+
+volumes:
+  mysql_data:
+  redis_data:
+  baileys_sessions:
+
+networks:
+  sales_agent_net:
+    driver: bridge

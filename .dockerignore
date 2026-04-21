@@ -1,0 +1,9 @@
+.git
+node_modules
+vendor
+public/storage
+storage/
+bootstrap/cache
+.env
+.env.*
+*.log

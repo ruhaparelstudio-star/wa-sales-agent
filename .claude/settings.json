@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"C:/laragon/bin/php/php-8.4.8-nts-Win32-vs17-x64/php.exe\" -d display_errors=1 vendor/bin/pest app/Modules/Leads/Tests/LeadServiceTest.php --verbose)"
+    ]
+  }
+}

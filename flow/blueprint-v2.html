@@ -1,0 +1,2743 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>
+      Wedding Vendor WhatsApp Sales Agent SaaS — Master Blueprint v2
+    </title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #121933;
+        --panel-2: #0f152b;
+        --muted: #9fb0d1;
+        --text: #edf2ff;
+        --line: #28345f;
+        --accent: #7c9cff;
+        --accent-2: #55d6be;
+        --warn: #ffb454;
+        --danger: #ff6b7a;
+        --ok: #6ee7a8;
+        --shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+        --radius: 18px;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --sans:
+          Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Helvetica, Arial, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        font-family: var(--sans);
+        color: var(--text);
+        background:
+          radial-gradient(
+            1200px 600px at 10% -10%,
+            rgba(124, 156, 255, 0.2),
+            transparent 60%
+          ),
+          radial-gradient(
+            900px 500px at 110% 0%,
+            rgba(85, 214, 190, 0.1),
+            transparent 50%
+          ),
+          linear-gradient(180deg, #0a0f1d 0%, #090d19 100%);
+        line-height: 1.55;
+      }
+      .container {
+        width: min(1400px, calc(100vw - 32px));
+        margin: 0 auto;
+      }
+      .hero {
+        padding: 48px 0 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        position: relative;
+        top: 0;
+        backdrop-filter: blur(14px);
+        background: linear-gradient(
+          180deg,
+          rgba(9, 13, 25, 0.95),
+          rgba(9, 13, 25, 0.82)
+        );
+        z-index: 50;
+      }
+      .hero-inner {
+        display: grid;
+        grid-template-columns: 1.4fr 0.6fr;
+        gap: 24px;
+        align-items: center;
+      }
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid rgba(124, 156, 255, 0.35);
+        color: #cdd8ff;
+        background: rgba(124, 156, 255, 0.08);
+        padding: 7px 14px;
+        border-radius: 999px;
+        font-size: 12px;
+        letter-spacing: 0.04em;
+      }
+      .version-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(110, 231, 168, 0.12);
+        border: 1px solid rgba(110, 231, 168, 0.3);
+        color: #b7ffd7;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        margin-left: 8px;
+      }
+      h1 {
+        font-size: clamp(28px, 4vw, 48px);
+        line-height: 1.08;
+        margin: 14px 0 12px;
+      }
+      .subtitle {
+        font-size: 16px;
+        color: var(--muted);
+        max-width: 900px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+      .stat {
+        background: linear-gradient(
+          180deg,
+          rgba(18, 25, 51, 0.96),
+          rgba(15, 21, 43, 0.96)
+        );
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 16px;
+        box-shadow: var(--shadow);
+      }
+      .stat .k {
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .stat .v {
+        font-size: 24px;
+        font-weight: 700;
+        margin-top: 5px;
+      }
+      .topnav {
+        margin: 18px 0 0;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .topnav a {
+        text-decoration: none;
+        color: #dbe5ff;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 8px 13px;
+        border-radius: 10px;
+        font-size: 13px;
+        transition: all 0.15s;
+      }
+      .topnav a:hover {
+        border-color: rgba(124, 156, 255, 0.45);
+        color: #fff;
+        background: rgba(124, 156, 255, 0.08);
+      }
+      .topnav a.new {
+        border-color: rgba(110, 231, 168, 0.3);
+        color: #b7ffd7;
+        background: rgba(110, 231, 168, 0.07);
+      }
+      main {
+        padding: 24px 0 72px;
+      }
+      section {
+        margin-top: 28px;
+      }
+      .section-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 16px;
+        font-size: 24px;
+      }
+      .section-title .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        flex-shrink: 0;
+      }
+      .card {
+        background: linear-gradient(
+          180deg,
+          rgba(18, 25, 51, 0.96),
+          rgba(15, 21, 43, 0.96)
+        );
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 20px;
+        box-shadow: var(--shadow);
+      }
+      .card.new-gap {
+        border-color: rgba(110, 231, 168, 0.25);
+        background: linear-gradient(
+          180deg,
+          rgba(15, 28, 40, 0.96),
+          rgba(12, 22, 35, 0.96)
+        );
+      }
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+      }
+      .grid-4 {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 18px;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .pill {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.04);
+        color: #dfe7ff;
+        margin: 3px 5px 3px 0;
+      }
+      .ok {
+        border-color: rgba(110, 231, 168, 0.25);
+        background: rgba(110, 231, 168, 0.09);
+        color: #b7ffd7;
+      }
+      .warn {
+        border-color: rgba(255, 180, 84, 0.25);
+        background: rgba(255, 180, 84, 0.08);
+        color: #ffd9a6;
+      }
+      .danger {
+        border-color: rgba(255, 107, 122, 0.25);
+        background: rgba(255, 107, 122, 0.08);
+        color: #ffc0c8;
+      }
+      .accent {
+        border-color: rgba(124, 156, 255, 0.25);
+        background: rgba(124, 156, 255, 0.08);
+        color: #d3ddff;
+      }
+      .new {
+        border-color: rgba(110, 231, 168, 0.3);
+        background: rgba(110, 231, 168, 0.1);
+        color: #b7ffd7;
+      }
+      .list-tight {
+        margin: 10px 0 0;
+        padding-left: 18px;
+      }
+      .list-tight li {
+        margin: 6px 0;
+      }
+      .mini-title {
+        font-size: 14px;
+        font-weight: 700;
+        margin: 0 0 10px;
+        color: #fff;
+      }
+      .code {
+        font-family: var(--mono);
+        background: rgba(0, 0, 0, 0.28);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 14px;
+        overflow: auto;
+        white-space: pre-wrap;
+        color: #dce6ff;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .diagram {
+        background:
+          radial-gradient(
+            circle at top left,
+            rgba(124, 156, 255, 0.08),
+            transparent 36%
+          ),
+          rgba(255, 255, 255, 0.02);
+        border: 1px dashed rgba(124, 156, 255, 0.25);
+        border-radius: 16px;
+        padding: 16px;
+      }
+      .flow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .node {
+        background: linear-gradient(
+          180deg,
+          rgba(24, 33, 68, 0.95),
+          rgba(17, 23, 47, 0.95)
+        );
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 14px;
+        min-width: 150px;
+        flex: 0 0 auto;
+      }
+      .node strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 13px;
+      }
+      .node span {
+        font-size: 12px;
+      }
+      .node.new-node {
+        border-color: rgba(110, 231, 168, 0.35);
+        background: linear-gradient(
+          180deg,
+          rgba(15, 35, 30, 0.95),
+          rgba(10, 28, 25, 0.95)
+        );
+      }
+      .arrow {
+        color: #98a9d8;
+        font-weight: 800;
+        font-size: 18px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      th,
+      td {
+        padding: 11px 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        color: #cdd8ff;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        background: rgba(255, 255, 255, 0.03);
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      details {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 12px 14px;
+      }
+      details + details {
+        margin-top: 10px;
+      }
+      summary {
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 14px;
+      }
+      .gap-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        background: rgba(110, 231, 168, 0.15);
+        border: 1px solid rgba(110, 231, 168, 0.3);
+        color: #6ee7a8;
+        margin-left: 8px;
+        vertical-align: middle;
+      }
+      .footer-note {
+        margin-top: 32px;
+        color: var(--muted);
+        font-size: 13px;
+        padding: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.02);
+        line-height: 1.7;
+      }
+      .changelog {
+        background: rgba(110, 231, 168, 0.05);
+        border: 1px solid rgba(110, 231, 168, 0.2);
+        border-radius: 14px;
+        padding: 18px;
+        margin-bottom: 24px;
+      }
+      .changelog h3 {
+        margin: 0 0 12px;
+        font-size: 15px;
+        color: #6ee7a8;
+      }
+      .changelog ul {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+      }
+      .changelog li {
+        margin: 6px 0;
+        font-size: 13px;
+      }
+      @media (max-width: 1100px) {
+        .hero-inner,
+        .grid-4,
+        .grid-3,
+        .grid-2 {
+          grid-template-columns: 1fr;
+        }
+        .stats {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      @media (max-width: 720px) {
+        .stats {
+          grid-template-columns: 1fr;
+        }
+        .hero {
+          padding: 28px 0 16px;
+        }
+        .topnav a {
+          font-size: 12px;
+          padding: 7px 11px;
+        }
+        .node {
+          min-width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="container">
+        <div class="hero-inner">
+          <div>
+            <div>
+              <span class="eyebrow"
+                >Master Blueprint • Wedding Vendor WhatsApp Sales Agent SaaS •
+                Modular Monolith</span
+              >
+              <span class="version-badge">v2 — Gap Resolved</span>
+            </div>
+            <h1>
+              Dokumen Lengkap Sistem<br />WhatsApp Sales Agent untuk Vendor
+              Wedding
+            </h1>
+            <p class="subtitle">
+              Blueprint final yang merangkum fitur, roles, logic, anti-ban
+              guardrails, subscription, QR pairing multi-agent, invoice
+              workflow, notification system, Baileys bridge spec, media
+              handling, onboarding, cost control, pembagian modul, flow
+              operasional, dan arsitektur teknis — termasuk semua gap yang telah
+              dilengkapi.
+            </p>
+            <div class="topnav">
+              <a href="#executive">Ringkasan</a>
+              <a href="#roles">Roles</a>
+              <a href="#features">Features</a>
+              <a href="#flows">Flow Logic</a>
+              <a href="#guardrails">Anti-Ban</a>
+              <a href="#subscription">Subscription</a>
+              <a href="#qr">QR Pairing</a>
+              <a href="#llm">LLM Strategy</a>
+              <a href="#architecture">Architecture</a>
+              <a href="#stack">Tech Stack</a>
+              <a href="#baileys" class="new">Baileys Bridge ✦</a>
+              <a href="#media" class="new">Media Handling ✦</a>
+              <a href="#notifications" class="new">Notifications ✦</a>
+              <a href="#onboarding" class="new">Onboarding ✦</a>
+              <a href="#cost" class="new">Cost Control ✦</a>
+              <a href="#modules">Modules</a>
+              <a href="#data">Data Model</a>
+              <a href="#dashboard">Dashboard</a>
+              <a href="#phases">Build Phases</a>
+              <a href="#deploy">Deploy</a>
+              <a href="#appendix">Rules</a>
+            </div>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="k">Product Positioning</div>
+              <div class="v">AI Sales Qualifier</div>
+            </div>
+            <div class="stat">
+              <div class="k">Tech Style</div>
+              <div class="v">Laravel Monolith</div>
+            </div>
+            <div class="stat">
+              <div class="k">Primary Model</div>
+              <div class="v">GPT-4.1 Mini</div>
+            </div>
+            <div class="stat">
+              <div class="k">WA Provider</div>
+              <div class="v" style="color: var(--ok)">Baileys</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="container">
+        <!-- CHANGELOG -->
+        <section id="changelog" style="margin-top: 20px">
+          <div class="changelog">
+            <h3>Changelog v2 — Gap yang Dilengkapi</h3>
+            <ul>
+              <li>
+                <strong>Baileys Bridge Spec</strong> — REST API contract lengkap
+                antara Node.js sidecar dan Laravel: endpoints, webhook events,
+                SSE QR stream, session management, Docker setup.
+              </li>
+              <li>
+                <strong>Notification System</strong> — 7 notification types
+                (HandoffCreated, BillingAlert, AgentDisconnected, dll), in-app
+                notification center (Livewire), email channel, queue config.
+              </li>
+              <li>
+                <strong>Media Handling</strong> — Handling inbound non-text
+                messages (image, video, audio, document), payment proof
+                auto-detection, storage path convention, MessageType enum.
+              </li>
+              <li>
+                <strong>Tenant Onboarding</strong> — Manual onboarding via super
+                admin (MVP), tenant_invitations table, invitation email flow,
+                post-MVP self-register roadmap.
+              </li>
+              <li>
+                <strong>OpenAI Cost Control</strong> — llm_usage_logs table,
+                soft cap per plan, LoggingLlmClient wrapper, super admin usage
+                dashboard.
+              </li>
+              <li>
+                <strong>Docker Dev Stack</strong> — docker-compose.yml lengkap
+                (app, baileys-svc, mysql, redis, nginx, mailpit), Nginx proxy
+                config, Cloudflare Tunnel untuk dev.
+              </li>
+              <li>
+                <strong>Tech Stack dikunci penuh</strong> — Laravel 13, PHP 8.4,
+                Baileys Node.js 20, Spatie Permission, Mailpit untuk dev email.
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- EXECUTIVE SUMMARY -->
+        <section id="executive">
+          <h2 class="section-title">
+            <span class="dot"></span>Executive Summary
+          </h2>
+          <div class="card">
+            <p>
+              Sistem ini adalah
+              <strong>multi-tenant wedding sales platform</strong> dengan
+              frontliner AI di WhatsApp, namun tetap mempertahankan intervensi
+              manusia pada momen yang berisiko tinggi atau memerlukan otorisasi
+              final. Fokus utamanya bukan sekadar menjawab chat, tetapi
+              <strong
+                >mengubah chat masuk menjadi lead yang rapi, terklasifikasi,
+                di-follow-up dengan aman, lalu dihandover ke manusia pada saat
+                yang tepat</strong
+              >.
+            </p>
+            <div>
+              <span class="pill ok">Inbound-first</span>
+              <span class="pill ok">Human handoff wajib</span>
+              <span class="pill accent">GPT-4.1 Mini single-model</span>
+              <span class="pill accent">Multi WA agent via QR (Baileys)</span>
+              <span class="pill warn">Manual payment approval</span>
+              <span class="pill warn"
+                >Invoice client + billing invoice terpisah</span
+              >
+              <span class="pill new">Notification system ✦</span>
+              <span class="pill new">Media handling ✦</span>
+              <span class="pill danger">No campaign mode in MVP</span>
+            </div>
+            <div class="grid-3" style="margin-top: 18px">
+              <div
+                class="card"
+                style="
+                  padding: 16px;
+                  background: rgba(255, 255, 255, 0.02);
+                  box-shadow: none;
+                "
+              >
+                <div class="mini-title">Masalah yang Diselesaikan</div>
+                <ul class="list-tight muted">
+                  <li>Chat masuk menumpuk dan lambat dibalas.</li>
+                  <li>Lead sering hilang karena follow-up berantakan.</li>
+                  <li>Vendor tidak punya lead tracking dan history rapi.</li>
+                  <li>Admin capek jawab pertanyaan berulang.</li>
+                  <li>
+                    Tidak ada alert saat ada lead hot atau billing jatuh tempo.
+                  </li>
+                </ul>
+              </div>
+              <div
+                class="card"
+                style="
+                  padding: 16px;
+                  background: rgba(255, 255, 255, 0.02);
+                  box-shadow: none;
+                "
+              >
+                <div class="mini-title">Nilai Produk</div>
+                <ul class="list-tight muted">
+                  <li>Fast response dengan tone natural.</li>
+                  <li>Lead qualification dan memory otomatis.</li>
+                  <li>Invoice delivery workflow.</li>
+                  <li>Subscription &amp; billing manual-friendly.</li>
+                  <li>Notifikasi proaktif ke admin via email + in-app.</li>
+                  <li>Media (gambar, dokumen) tersimpan rapi.</li>
+                </ul>
+              </div>
+              <div
+                class="card"
+                style="
+                  padding: 16px;
+                  background: rgba(255, 255, 255, 0.02);
+                  box-shadow: none;
+                "
+              >
+                <div class="mini-title">Boundary Sistem</div>
+                <ul class="list-tight muted">
+                  <li>Availability final ditangani manusia.</li>
+                  <li>Custom package oleh manusia.</li>
+                  <li>Verifikasi DP/pembayaran oleh manusia.</li>
+                  <li>No auto blast / no campaign di MVP.</li>
+                  <li>Voice note tidak di-transcribe di MVP.</li>
+                  <li>Image tidak di-analyze di MVP.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ROLES -->
+        <section id="roles">
+          <h2 class="section-title">
+            <span class="dot"></span>Pembagian Roles
+          </h2>
+          <div class="grid-4">
+            <div class="card">
+              <div class="mini-title">1. Lead / Client</div>
+              <p class="muted">
+                Menghubungi vendor via WhatsApp, bertanya paket, harga,
+                portfolio, sampai siap booking.
+              </p>
+              <div>
+                <span class="pill">Can chat</span
+                ><span class="pill">Can receive invoice</span
+                ><span class="pill">Can send proof</span
+                ><span class="pill">Can send media</span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="mini-title">2. AI Agent</div>
+              <p class="muted">
+                Frontliner sales yang membalas chat masuk, menggali kebutuhan,
+                merekomendasikan paket, dan mengarahkan ke admin.
+              </p>
+              <div>
+                <span class="pill ok">Auto reply</span
+                ><span class="pill ok">Lead qualify</span
+                ><span class="pill warn">No final approval</span
+                ><span class="pill warn">No media analyze</span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="mini-title">3. Vendor Admin</div>
+              <p class="muted">
+                Mengelola agent, knowledge, lead, handoff, invoice client, dan
+                operasional harian. Menerima notifikasi penting.
+              </p>
+              <div>
+                <span class="pill accent">Manage agents</span
+                ><span class="pill accent">Upload invoice</span
+                ><span class="pill accent">Takeover chat</span
+                ><span class="pill accent">Receive notifications</span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="mini-title">4. Super Admin</div>
+              <p class="muted">
+                Pemilik platform. Mengelola paket langganan, onboarding tenant,
+                approve pembayaran subscription, suspend tenant.
+              </p>
+              <div>
+                <span class="pill danger">Onboard tenant</span
+                ><span class="pill danger">Approve subscription</span
+                ><span class="pill danger">Assign plan</span
+                ><span class="pill danger">Suspend tenant</span>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-top: 18px">
+            <div class="mini-title">RACI Ringkas</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Aktivitas</th>
+                  <th>AI Agent</th>
+                  <th>Vendor Admin</th>
+                  <th>Super Admin</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Reply chat inbound</td>
+                  <td>Responsible</td>
+                  <td>Can takeover</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>Handle media inbound</td>
+                  <td>Auto-acknowledge</td>
+                  <td>Review</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>Availability check final</td>
+                  <td>Escalate only</td>
+                  <td>Responsible</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>Custom package</td>
+                  <td>Escalate only</td>
+                  <td>Responsible</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>Client invoice upload/create</td>
+                  <td>Trigger delivery only</td>
+                  <td>Responsible</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>Verify DP / payment proof</td>
+                  <td>Auto-detect + escalate</td>
+                  <td>Responsible</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>Onboard tenant baru</td>
+                  <td>—</td>
+                  <td>—</td>
+                  <td>Responsible</td>
+                </tr>
+                <tr>
+                  <td>Assign subscription plan</td>
+                  <td>—</td>
+                  <td>View only</td>
+                  <td>Responsible</td>
+                </tr>
+                <tr>
+                  <td>Approve subscription payment</td>
+                  <td>—</td>
+                  <td>Submit proof</td>
+                  <td>Responsible</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- FEATURES -->
+        <section id="features">
+          <h2 class="section-title">
+            <span class="dot"></span>Fitur Utama Sistem
+          </h2>
+          <div class="grid-3">
+            <div class="card">
+              <div class="mini-title">Conversation Engine</div>
+              <p class="muted">
+                Intent detection, memory-aware response, stateful chat, natural
+                reply, lead stage update.
+              </p>
+            </div>
+            <div class="card">
+              <div class="mini-title">Lead Qualification</div>
+              <p class="muted">
+                Tangkap nama, tanggal acara, lokasi, budget, jenis layanan,
+                status lead, skor minat.
+              </p>
+            </div>
+            <div class="card">
+              <div class="mini-title">Package Recommendation</div>
+              <p class="muted">
+                Rekomendasi paket dari pricing aktif yang terstruktur, bukan
+                parsing PDF tiap chat.
+              </p>
+            </div>
+            <div class="card">
+              <div class="mini-title">Human Handoff</div>
+              <p class="muted">
+                Escalation untuk availability, custom request, nego, payment
+                proof, komplain, booking intent.
+              </p>
+            </div>
+            <div class="card">
+              <div class="mini-title">Invoice Delivery</div>
+              <p class="muted">
+                Admin upload/buat invoice per lead, sistem kirim otomatis via
+                agent yang sesuai.
+              </p>
+            </div>
+            <div class="card">
+              <div class="mini-title">Portfolio Routing</div>
+              <p class="muted">
+                Arahkan user ke Instagram/portfolio link, lalu handoff jika
+                minta detail spesifik.
+              </p>
+            </div>
+            <div class="card">
+              <div class="mini-title">Auto Follow-up</div>
+              <p class="muted">
+                Follow-up inbound-safe dengan limit ketat, prioritas rendah, dan
+                stop condition jelas.
+              </p>
+            </div>
+            <div class="card">
+              <div class="mini-title">Multi WA Agent via QR</div>
+              <p class="muted">
+                Multi-number per tenant dengan pairing QR via Baileys,
+                reconnect, default agent, dan slot berbasis plan.
+              </p>
+            </div>
+            <div class="card">
+              <div class="mini-title">Subscription &amp; Billing</div>
+              <p class="muted">
+                Billing invoice otomatis, approval manual super admin, alert
+                jatuh tempo, enforcement agent limit.
+              </p>
+            </div>
+            <div class="card new-gap">
+              <div class="mini-title">
+                Notification System <span class="gap-badge">v2</span>
+              </div>
+              <p class="muted">
+                7 jenis notifikasi: handoff baru, billing alert, agent
+                disconnect, lead hot, invoice approved. In-app bell + email.
+              </p>
+            </div>
+            <div class="card new-gap">
+              <div class="mini-title">
+                Media Handling <span class="gap-badge">v2</span>
+              </div>
+              <p class="muted">
+                Simpan inbound image, video, audio, dokumen. Auto-detect bukti
+                transfer. AI tetap hanya proses text.
+              </p>
+            </div>
+            <div class="card new-gap">
+              <div class="mini-title">
+                LLM Cost Control <span class="gap-badge">v2</span>
+              </div>
+              <p class="muted">
+                Logging setiap LLM call per tenant. Soft cap warning. Usage
+                dashboard di super admin panel.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- FLOW LOGIC -->
+        <section id="flows">
+          <h2 class="section-title">
+            <span class="dot"></span>Flow Logic Inti
+          </h2>
+          <div class="grid-2">
+            <div class="card">
+              <div class="mini-title">A. Incoming Message Flow (Updated)</div>
+              <div class="diagram">
+                <div class="flow">
+                  <div class="node">
+                    <strong>Baileys Sidecar</strong
+                    ><span class="muted">WA event → POST webhook</span>
+                  </div>
+                  <div class="arrow">→</div>
+                  <div class="node">
+                    <strong>Webhook Controller</strong
+                    ><span class="muted">Idempotency check, enqueue</span>
+                  </div>
+                  <div class="arrow">→</div>
+                  <div class="node">
+                    <strong>MessageIngestService</strong
+                    ><span class="muted">Identify tenant, lead, conv</span>
+                  </div>
+                  <div class="arrow">→</div>
+                  <div class="node new-node">
+                    <strong>Media Check</strong
+                    ><span class="muted">Text → LLM | Media → store+ack</span>
+                  </div>
+                  <div class="arrow">→</div>
+                  <div class="node">
+                    <strong>ContextAssembler</strong
+                    ><span class="muted">Memory + rules + knowledge</span>
+                  </div>
+                  <div class="arrow">→</div>
+                  <div class="node">
+                    <strong>GPT-4.1 Mini</strong
+                    ><span class="muted">Classify + respond</span>
+                  </div>
+                  <div class="arrow">→</div>
+                  <div class="node">
+                    <strong>GuardrailService</strong
+                    ><span class="muted">Policy check, throttle</span>
+                  </div>
+                  <div class="arrow">→</div>
+                  <div class="node">
+                    <strong>OutboundDispatch</strong
+                    ><span class="muted">Queue → Baileys → send</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="mini-title">B. Decision Mapping</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Intent</th>
+                    <th>Action</th>
+                    <th>Human?</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Greeting / intro</td>
+                    <td>Sapa, gali kebutuhan inti</td>
+                    <td>Tidak</td>
+                  </tr>
+                  <tr>
+                    <td>Tanya harga / paket</td>
+                    <td>Ambil paket relevan, jelaskan singkat</td>
+                    <td>Tidak</td>
+                  </tr>
+                  <tr>
+                    <td>Banding paket</td>
+                    <td>Bandingkan 2–3 paket</td>
+                    <td>Tidak</td>
+                  </tr>
+                  <tr>
+                    <td>Availability check</td>
+                    <td>Transisi ke admin</td>
+                    <td>Ya</td>
+                  </tr>
+                  <tr>
+                    <td>Custom package</td>
+                    <td>Transisi ke admin</td>
+                    <td>Ya</td>
+                  </tr>
+                  <tr>
+                    <td>Ready to book</td>
+                    <td>Tandai hot lead, arahkan ke admin</td>
+                    <td>Ya</td>
+                  </tr>
+                  <tr>
+                    <td>Kirim gambar / dokumen</td>
+                    <td>Simpan, acknowledge, cek apakah bukti bayar</td>
+                    <td>Kondisional</td>
+                  </tr>
+                  <tr>
+                    <td>Kirim bukti transfer</td>
+                    <td>Simpan media, buat handoff verifikasi</td>
+                    <td>Ya</td>
+                  </tr>
+                  <tr>
+                    <td>Portfolio request</td>
+                    <td>Kirim link IG, lalu handoff jika minta spesifik</td>
+                    <td>Kondisional</td>
+                  </tr>
+                  <tr>
+                    <td>Komplain / emosi negatif</td>
+                    <td>Empati + stop automation + handoff</td>
+                    <td>Ya</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-top: 18px">
+            <div class="card">
+              <div class="mini-title">C. Invoice Client Flow</div>
+              <div class="code">
+                Lead choose package → Vendor admin opens lead page →
+                Upload/create invoice → Attach invoice to lead → Set message
+                intro (optional) → Queue SendClientInvoiceJob (medium priority)
+                → Baileys send via assigned WA agent → Mark invoice sent → Wait
+                for payment proof (image/doc) → PaymentProofRoutingService
+                detects media → HandoffRequest created → admin notified
+              </div>
+            </div>
+            <div class="card">
+              <div class="mini-title">D. Lead Lifecycle</div>
+              <div>
+                <span class="pill">NEW</span><span class="pill">QUALIFIED</span>
+                <span class="pill accent">INTERESTED</span
+                ><span class="pill warn">HOT</span>
+                <span class="pill warn">READY_FOR_HUMAN</span
+                ><span class="pill ok">CLOSED_WON</span>
+                <span class="pill danger">CLOSED_LOST</span>
+              </div>
+              <ul class="list-tight muted">
+                <li>
+                  <strong>NEW</strong>: baru masuk, belum lengkap datanya.
+                </li>
+                <li>
+                  <strong>QUALIFIED</strong>: kebutuhan inti sudah tertangkap.
+                </li>
+                <li>
+                  <strong>INTERESTED</strong>: aktif bertanya dan responsif.
+                </li>
+                <li>
+                  <strong>HOT</strong>: mendekati booking, butuh admin. → Notify
+                  admin.
+                </li>
+                <li>
+                  <strong>READY_FOR_HUMAN</strong>: sudah masuk escalation.
+                </li>
+                <li><strong>CLOSED_WON/LOST</strong>: hasil akhir lead.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- GUARDRAILS -->
+        <section id="guardrails">
+          <h2 class="section-title">
+            <span class="dot"></span>Anti-Ban Guardrails &amp; Safety Logic
+          </h2>
+          <div class="card">
+            <p>
+              Karena pairing WA memakai QR/session via Baileys (non-official),
+              sistem harus mengutamakan <strong>perilaku yang aman</strong>:
+              inbound-first, tidak blast, follow-up terbatas, stop condition
+              jelas.
+            </p>
+            <div class="grid-3">
+              <div
+                class="card"
+                style="
+                  padding: 16px;
+                  background: rgba(255, 255, 255, 0.02);
+                  box-shadow: none;
+                "
+              >
+                <div class="mini-title">Inbound-first</div>
+                <ul class="list-tight muted">
+                  <li>Agent hanya auto-reply pada chat yang memang masuk.</li>
+                  <li>Tidak kirim pesan pertama ke nomor dingin.</li>
+                  <li>No campaign / no blast di MVP.</li>
+                </ul>
+              </div>
+              <div
+                class="card"
+                style="
+                  padding: 16px;
+                  background: rgba(255, 255, 255, 0.02);
+                  box-shadow: none;
+                "
+              >
+                <div class="mini-title">Follow-up Limit</div>
+                <ul class="list-tight muted">
+                  <li>Maksimal 2 auto follow-up per inquiry.</li>
+                  <li>FU-1 minimal 18 jam setelah last message.</li>
+                  <li>FU-2 minimal 48 jam setelah FU-1.</li>
+                  <li>Setelah itu stop total.</li>
+                </ul>
+              </div>
+              <div
+                class="card"
+                style="
+                  padding: 16px;
+                  background: rgba(255, 255, 255, 0.02);
+                  box-shadow: none;
+                "
+              >
+                <div class="mini-title">Natural Reply Delay</div>
+                <ul class="list-tight muted">
+                  <li>2–5 detik untuk jawaban pendek.</li>
+                  <li>4–10 detik untuk rekomendasi paket.</li>
+                  <li>Typing window untuk bundling pesan user.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="grid-2" style="margin-top: 18px">
+              <div
+                class="card"
+                style="
+                  padding: 16px;
+                  background: rgba(255, 255, 255, 0.02);
+                  box-shadow: none;
+                "
+              >
+                <div class="mini-title">Adaptive Throughput</div>
+                <ul class="list-tight muted">
+                  <li>
+                    <strong>Per-lead pacing</strong>: jangan bombard 1 lead
+                    terlalu rapat.
+                  </li>
+                  <li>
+                    <strong>Per-number rolling window</strong>: batasi pola
+                    burst.
+                  </li>
+                  <li>
+                    <strong>Priority queue</strong>: realtime reply &gt; invoice
+                    send &gt; auto follow-up.
+                  </li>
+                  <li>
+                    <strong>Adaptive cooldown</strong>: follow-up ditunda jika
+                    nomor sedang sibuk.
+                  </li>
+                </ul>
+              </div>
+              <div
+                class="card"
+                style="
+                  padding: 16px;
+                  background: rgba(255, 255, 255, 0.02);
+                  box-shadow: none;
+                "
+              >
+                <div class="mini-title">Stop Conditions</div>
+                <ul class="list-tight muted">
+                  <li>User minta stop / tidak minat / hapus nomor.</li>
+                  <li>Sentiment negatif berat atau komplain.</li>
+                  <li>2 follow-up tidak dibalas.</li>
+                  <li>Lead sudah handoff ke admin.</li>
+                  <li>Agent disconnected.</li>
+                  <li>Conversation risk score melewati threshold.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="code" style="margin-top: 16px">
+              Outbound pipeline: compose response → media check (jika inbound
+              media, skip LLM) → guardrail policy check → lead state check →
+              quiet hours check → follow-up limit check → risk score check →
+              priority queue (high/medium/low) → adaptive throttle per agent
+              number → delay engine (natural typing simulation) → Baileys send →
+              update message status
+            </div>
+          </div>
+        </section>
+
+        <!-- SUBSCRIPTION -->
+        <section id="subscription">
+          <h2 class="section-title">
+            <span class="dot"></span>Subscription, Billing, dan Limit Agent
+          </h2>
+          <div class="grid-2">
+            <div class="card">
+              <div class="mini-title">Subscription Rules</div>
+              <ul class="list-tight muted">
+                <li>Plan ditetapkan manual oleh super admin.</li>
+                <li>Pembayaran subscription diverifikasi manual.</li>
+                <li>
+                  Billing invoice subscription digenerate otomatis H-7 sebelum
+                  expired.
+                </li>
+                <li>
+                  Yang menghitung slot agent hanya status
+                  <strong>connected</strong>.
+                </li>
+                <li>
+                  <strong>Disconnected</strong> dianggap tidak terdaftar dan
+                  tidak mengurangi slot.
+                </li>
+              </ul>
+              <div style="margin-top: 12px">
+                <span class="pill">pending_payment</span
+                ><span class="pill ok">active</span>
+                <span class="pill warn">grace_period</span
+                ><span class="pill danger">expired</span>
+                <span class="pill danger">suspended</span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="mini-title">Dashboard Billing Behavior</div>
+              <ul class="list-tight muted">
+                <li>
+                  Banner alert H-7, H-3, H-1, hari H, dan lewat jatuh tempo.
+                </li>
+                <li>
+                  Halaman billing: plan aktif, sisa slot agent, histori invoice
+                  subscription, upload bukti bayar.
+                </li>
+                <li>
+                  Kalau expired: dashboard terbatas untuk billing, pairing QR
+                  dan outbound diblok.
+                </li>
+                <li>
+                  <strong>Email + in-app notification</strong> dikirim di setiap
+                  milestone alert.
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="card" style="margin-top: 18px">
+            <div class="mini-title">Contoh Paket Subscription</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Plan</th>
+                  <th>Target</th>
+                  <th>Limit Agent</th>
+                  <th>Core Access</th>
+                  <th>Token Soft Cap/bulan</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Starter</td>
+                  <td>Vendor kecil</td>
+                  <td>1</td>
+                  <td>AI reply, lead basic, invoice send basic</td>
+                  <td>500k tokens</td>
+                </tr>
+                <tr>
+                  <td>Growth</td>
+                  <td>Vendor berkembang</td>
+                  <td>3</td>
+                  <td>Follow-up, dashboard lengkap, handoff, billing page</td>
+                  <td>1.5M tokens</td>
+                </tr>
+                <tr>
+                  <td>Pro</td>
+                  <td>Studio/tim</td>
+                  <td>5+</td>
+                  <td>Multi admin, analytics lanjutan, audit log detail</td>
+                  <td>5M tokens</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- QR PAIRING -->
+        <section id="qr">
+          <h2 class="section-title">
+            <span class="dot"></span>QR Pairing &amp; Multi WhatsApp Agent
+            (Baileys)
+          </h2>
+          <div class="grid-2">
+            <div class="card">
+              <div class="mini-title">Pairing Lifecycle</div>
+              <div class="code">
+                Admin click "Tambah Agent" → Check plan.max_agents vs connected
+                agents (slot check) → Create pairing session (DB) → POST
+                /agents/:id/start ke Baileys → Browser connect SSE
+                /baileys/agents/:id/qr-stream → QR tampil di modal (base64
+                image) → QR expires → Baileys generate baru → SSE update
+                otomatis → If page closed: POST /agents/:id/cancel → stop QR →
+                If scanned: Baileys POST webhook agent_connected ke Laravel →
+                WhatsApp agent status = connected, session tersimpan di
+                filesystem
+              </div>
+            </div>
+            <div class="card">
+              <div class="mini-title">Rules yang Terkunci</div>
+              <ul class="list-tight muted">
+                <li>1 QR = 1 pairing session, tidak reusable.</li>
+                <li>
+                  QR auto-generate hanya selama admin di halaman (SSE active).
+                </li>
+                <li>
+                  Admin keluar halaman → cancel endpoint dipanggil → stop QR.
+                </li>
+                <li>Nomor <strong>connected</strong> → scan ulang ditolak.</li>
+                <li>
+                  Nomor <strong>disconnected</strong> → scan ulang = reconnect
+                  (pakai existing record).
+                </li>
+                <li>
+                  Slot dihitung ulang setelah status berubah ke connected.
+                </li>
+                <li>
+                  Session tersimpan di filesystem Baileys (persistent across
+                  restart).
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="card" style="margin-top: 18px">
+            <div class="mini-title">Agent State Diagram</div>
+            <div class="diagram">
+              <div class="flow">
+                <div class="node">
+                  <strong>Tambah Agent</strong
+                  ><span class="muted">Slot check → create session</span>
+                </div>
+                <div class="arrow">→</div>
+                <div class="node">
+                  <strong>QR Active (SSE)</strong
+                  ><span class="muted">Rotate tiap ~20 detik</span>
+                </div>
+                <div class="arrow">→</div>
+                <div class="node">
+                  <strong>Scanned?</strong
+                  ><span class="muted">Baileys webhook → Laravel</span>
+                </div>
+                <div class="arrow">→</div>
+                <div class="node new-node">
+                  <strong>Connected</strong
+                  ><span class="muted">Persistent, slot terpakai</span>
+                </div>
+              </div>
+              <div class="flow" style="margin-top: 12px">
+                <div class="node">
+                  <strong>Page Closed</strong
+                  ><span class="muted">Cancel endpoint → stop SSE</span>
+                </div>
+                <div class="arrow">→</div>
+                <div class="node">
+                  <strong>Session Cancelled</strong
+                  ><span class="muted">Pairing dibatalkan</span>
+                </div>
+                <div class="arrow" style="margin-left: 32px">↕</div>
+                <div class="node">
+                  <strong>Disconnected</strong
+                  ><span class="muted">Slot bebas, bisa reconnect</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- LLM STRATEGY -->
+        <section id="llm">
+          <h2 class="section-title">
+            <span class="dot"></span>LLM Strategy (Single Model)
+          </h2>
+          <div class="card">
+            <p>
+              Sistem memakai <strong>GPT-4.1 Mini</strong> sebagai satu model
+              untuk semua task, dengan <strong>mode prompt berbeda</strong> agar
+              tetap efisien. LLM hanya dipanggil untuk
+              <strong>text messages</strong> — media inbound ditangani di layer
+              sebelumnya.
+            </p>
+            <div class="grid-3">
+              <div
+                class="card"
+                style="
+                  padding: 16px;
+                  background: rgba(255, 255, 255, 0.02);
+                  box-shadow: none;
+                "
+              >
+                <div class="mini-title">Mode 1 — Classifier</div>
+                <ul class="list-tight muted">
+                  <li>Intent</li>
+                  <li>Sentiment / emotion</li>
+                  <li>Field extraction</li>
+                  <li>needs_handoff</li>
+                  <li>Output: JSON ringan</li>
+                </ul>
+              </div>
+              <div
+                class="card"
+                style="
+                  padding: 16px;
+                  background: rgba(255, 255, 255, 0.02);
+                  box-shadow: none;
+                "
+              >
+                <div class="mini-title">Mode 2 — Sales Brain</div>
+                <ul class="list-tight muted">
+                  <li>Jawab user</li>
+                  <li>Rekomendasi paket</li>
+                  <li>Handle objection ringan</li>
+                  <li>Follow-up</li>
+                  <li>Output: natural text</li>
+                </ul>
+              </div>
+              <div
+                class="card"
+                style="
+                  padding: 16px;
+                  background: rgba(255, 255, 255, 0.02);
+                  box-shadow: none;
+                "
+              >
+                <div class="mini-title">Mode 3 — Admin Summary</div>
+                <ul class="list-tight muted">
+                  <li>Ringkasan handoff</li>
+                  <li>Recap percakapan</li>
+                  <li>Context untuk takeover admin</li>
+                  <li>memory_updates, follow_up_eligible</li>
+                </ul>
+              </div>
+            </div>
+            <div class="code" style="margin-top: 16px">
+              Context assembly order (context-assembly.md): 1. Tenant policy
+              snapshot 2. Lead memory snapshot 3. Booking schema missing fields
+              (if needed) 4. Relevant knowledge subset (max 3 items) 5. Recent
+              messages (max 6) 6. Conversation summary 7. Current task mode
+              instruction Never send: full history, full knowledge dump,
+              cross-tenant data
+            </div>
+          </div>
+        </section>
+
+        <!-- ARCHITECTURE -->
+        <section id="architecture">
+          <h2 class="section-title">
+            <span class="dot"></span>Architecture Overview
+          </h2>
+          <div class="card">
+            <div class="mini-title">
+              Logical Architecture (Updated — Baileys Sidecar)
+            </div>
+            <div class="diagram">
+              <div class="flow">
+                <div class="node new-node">
+                  <strong>WhatsApp Network</strong
+                  ><span class="muted">WA protocol</span>
+                </div>
+                <div class="arrow">↔</div>
+                <div class="node new-node">
+                  <strong>Baileys Sidecar (Node.js)</strong
+                  ><span class="muted">Session, QR SSE, send/receive</span>
+                </div>
+                <div class="arrow">↔</div>
+                <div class="node">
+                  <strong>Laravel App (PHP)</strong
+                  ><span class="muted"
+                    >Webhook ingress + outbound dispatch</span
+                  >
+                </div>
+                <div class="arrow">→</div>
+                <div class="node">
+                  <strong>Agent Core</strong
+                  ><span class="muted">Context, LLM, routing, memory</span>
+                </div>
+                <div class="arrow">→</div>
+                <div class="node">
+                  <strong>Policy Engine</strong
+                  ><span class="muted">Delay, throttle, stop conditions</span>
+                </div>
+                <div class="arrow">→</div>
+                <div class="node">
+                  <strong>Queue (Redis)</strong
+                  ><span class="muted">high / medium / low</span>
+                </div>
+              </div>
+              <div class="flow" style="margin-top: 12px">
+                <div class="node">
+                  <strong>MySQL</strong
+                  ><span class="muted"
+                    >Tenant, leads, conversations, billing</span
+                  >
+                </div>
+                <div class="arrow">↔</div>
+                <div class="node">
+                  <strong>Redis</strong
+                  ><span class="muted">Queue, cache, locks, idempotency</span>
+                </div>
+                <div class="arrow">↔</div>
+                <div class="node">
+                  <strong>Storage</strong
+                  ><span class="muted">Invoices, media, proofs</span>
+                </div>
+                <div class="arrow">↔</div>
+                <div class="node">
+                  <strong>Admin Dashboard</strong
+                  ><span class="muted">Blade + Livewire</span>
+                </div>
+                <div class="arrow">↔</div>
+                <div class="node new-node">
+                  <strong>Mailpit / SMTP</strong
+                  ><span class="muted">Notification emails</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TECH STACK -->
+        <section id="stack">
+          <h2 class="section-title">
+            <span class="dot"></span>Tech Stack Final
+          </h2>
+          <div class="grid-2">
+            <div class="card">
+              <div class="mini-title">Laravel Side (PHP)</div>
+              <table>
+                <tbody>
+                  <tr>
+                    <td style="color: var(--muted); width: 140px">Framework</td>
+                    <td>Laravel 13, PHP 8.4+</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">Database</td>
+                    <td>MySQL 8+</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">Cache / Queue</td>
+                    <td>Redis 7+</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">UI</td>
+                    <td>Blade + Livewire 3</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">Queue Monitor</td>
+                    <td>Laravel Horizon</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">Auth</td>
+                    <td>Laravel Sanctum + custom tenant guard</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">Roles / Permissions</td>
+                    <td>Spatie Laravel Permission</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">LLM</td>
+                    <td>openai-php/client (gpt-4.1-mini only)</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">Storage</td>
+                    <td>local / S3-compatible</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">Testing</td>
+                    <td>Pest PHP</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">Process Manager</td>
+                    <td>Supervisor + Horizon</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="card">
+              <div class="mini-title">Baileys Sidecar (Node.js)</div>
+              <table>
+                <tbody>
+                  <tr>
+                    <td style="color: var(--muted); width: 140px">Runtime</td>
+                    <td>Node.js 20 LTS</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">WA Library</td>
+                    <td>@whiskeysockets/baileys</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">HTTP Framework</td>
+                    <td>Fastify atau Express</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">QR ke Browser</td>
+                    <td>Server-Sent Events (SSE)</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">Session Store</td>
+                    <td>Filesystem per agent</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">Outbound trigger</td>
+                    <td>Laravel POST → Baileys REST</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">Inbound event</td>
+                    <td>Baileys POST → Laravel webhook</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">Multi-agent</td>
+                    <td>1 process, N socket per agent_id</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="mini-title" style="margin-top: 16px">
+                Dev Environment (Docker — Windows)
+              </div>
+              <table>
+                <tbody>
+                  <tr>
+                    <td style="color: var(--muted); width: 140px">
+                      Containers
+                    </td>
+                    <td>app, baileys-svc, mysql, redis, nginx, mailpit</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">WA Tunnel</td>
+                    <td>Cloudflare Tunnel atau ngrok</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">Email Dev</td>
+                    <td>Mailpit (localhost:8025)</td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--muted)">Session volume</td>
+                    <td>./baileys-sessions → persistent</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- BAILEYS BRIDGE (NEW) -->
+        <section id="baileys">
+          <h2 class="section-title">
+            <span class="dot"></span>Baileys Bridge Spec
+            <span class="gap-badge">v2 — Baru</span>
+          </h2>
+          <div class="grid-2">
+            <div class="card new-gap">
+              <div class="mini-title">
+                REST API Endpoints (Baileys → Laravel calls)
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Method</th>
+                    <th>Endpoint</th>
+                    <th>Fungsi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>POST</td>
+                    <td>/agents/:id/start</td>
+                    <td>Mulai socket, return SSE URL</td>
+                  </tr>
+                  <tr>
+                    <td>GET</td>
+                    <td>/agents/:id/qr-stream</td>
+                    <td>SSE stream QR updates ke browser</td>
+                  </tr>
+                  <tr>
+                    <td>POST</td>
+                    <td>/agents/:id/cancel</td>
+                    <td>Cancel pairing session</td>
+                  </tr>
+                  <tr>
+                    <td>POST</td>
+                    <td>/agents/:id/disconnect</td>
+                    <td>Disconnect socket + hapus session</td>
+                  </tr>
+                  <tr>
+                    <td>POST</td>
+                    <td>/agents/:id/send</td>
+                    <td>Kirim pesan outbound</td>
+                  </tr>
+                  <tr>
+                    <td>GET</td>
+                    <td>/agents/:id/status</td>
+                    <td>Cek status koneksi</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div
+                style="margin-top: 10px; font-size: 12px; color: var(--muted)"
+              >
+                Semua request header wajib:
+                <code>X-Baileys-Secret: {secret}</code>
+              </div>
+            </div>
+            <div class="card new-gap">
+              <div class="mini-title">
+                Webhook Events (Baileys → Laravel POST)
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Event</th>
+                    <th>Trigger</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>message_received</td>
+                    <td>Pesan masuk dari lead</td>
+                  </tr>
+                  <tr>
+                    <td>agent_connected</td>
+                    <td>QR berhasil di-scan</td>
+                  </tr>
+                  <tr>
+                    <td>agent_disconnected</td>
+                    <td>Koneksi terputus</td>
+                  </tr>
+                  <tr>
+                    <td>message_status_update</td>
+                    <td>sent / delivered / read / failed</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div
+                style="margin-top: 10px; font-size: 12px; color: var(--muted)"
+              >
+                Header wajib: <code>X-Idempotency-Key</code> per event untuk
+                mencegah duplicate processing.
+              </div>
+            </div>
+          </div>
+          <div class="card new-gap" style="margin-top: 18px">
+            <div class="mini-title">Send Payload Format</div>
+            <div class="code">
+              POST /agents/{agent_id}/send { "to": "+628123456789", "type":
+              "text", // text | image | document "content": "Halo, terima
+              kasih!", "idempotency_key": "job-uuid" } Response: { "message_id":
+              "3EB0...", "status": "sent", "timestamp": "ISO8601" }
+            </div>
+          </div>
+        </section>
+
+        <!-- MEDIA HANDLING (NEW) -->
+        <section id="media">
+          <h2 class="section-title">
+            <span class="dot"></span>Media Handling
+            <span class="gap-badge">v2 — Baru</span>
+          </h2>
+          <div class="card new-gap">
+            <p>
+              AI hanya memproses <strong>text messages</strong>. Non-text
+              messages disimpan dan di-acknowledge, tidak di-pass ke LLM.
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>WA Message Type</th>
+                  <th>Storage</th>
+                  <th>AI Action</th>
+                  <th>Auto Response</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>text</td>
+                  <td>DB messages</td>
+                  <td>Full LLM processing</td>
+                  <td>Generated by LLM</td>
+                </tr>
+                <tr>
+                  <td>image</td>
+                  <td>storage/tenants/{id}/media/</td>
+                  <td>Simpan, cek bukti bayar</td>
+                  <td>"Foto sudah kami terima 📸"</td>
+                </tr>
+                <tr>
+                  <td>video</td>
+                  <td>storage/tenants/{id}/media/</td>
+                  <td>Simpan metadata</td>
+                  <td>"Video sudah kami terima"</td>
+                </tr>
+                <tr>
+                  <td>audio / voice</td>
+                  <td>metadata only (MVP)</td>
+                  <td>Simpan, tidak transcribe</td>
+                  <td>"Pesan suara sudah kami terima"</td>
+                </tr>
+                <tr>
+                  <td>document (PDF)</td>
+                  <td>storage/tenants/{id}/media/</td>
+                  <td>Simpan, cek bukti bayar</td>
+                  <td>"Dokumen sudah kami terima"</td>
+                </tr>
+                <tr>
+                  <td>sticker / reaction</td>
+                  <td>Diabaikan</td>
+                  <td>—</td>
+                  <td>Tidak ada response</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card new-gap" style="margin-top: 18px">
+            <div class="mini-title">Payment Proof Auto-Detection</div>
+            <div class="code">
+              Lead kirim image atau document → Cek: apakah ada client_invoice
+              dengan status = sent untuk lead ini? → Jika YA: - Buat
+              HandoffRequest (reason = payment_proof_received) - Simpan media ke
+              storage/tenants/{id}/proofs/ - Notify vendor admin
+              (HandoffCreatedNotification) - Auto-reply: "Bukti transfer sudah
+              kami terima! Tim kami akan verifikasi segera." → Jika TIDAK: -
+              Simpan ke media folder - Auto-reply generic sesuai tipe file
+            </div>
+          </div>
+          <div class="card new-gap" style="margin-top: 18px">
+            <div class="mini-title">MVP Limitations (TODO post-MVP)</div>
+            <ul class="list-tight muted">
+              <li>
+                Voice note <strong>tidak</strong> di-transcribe (post-MVP:
+                Whisper API)
+              </li>
+              <li>
+                Image <strong>tidak</strong> di-analyze / OCR (post-MVP: Vision
+                API)
+              </li>
+              <li>Video <strong>tidak</strong> di-analyze (post-MVP)</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- NOTIFICATION SYSTEM (NEW) -->
+        <section id="notifications">
+          <h2 class="section-title">
+            <span class="dot"></span>Notification System
+            <span class="gap-badge">v2 — Baru</span>
+          </h2>
+          <div class="card new-gap">
+            <p>
+              7 jenis notifikasi via dua channel:
+              <strong>database</strong> (in-app notification bell, semua notif)
+              dan <strong>mail</strong> (event kritis saja).
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Notification</th>
+                  <th>Trigger</th>
+                  <th>Penerima</th>
+                  <th>Channel</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>HandoffCreatedNotification</td>
+                  <td>Handoff request dibuat</td>
+                  <td>Vendor admin</td>
+                  <td>database + mail</td>
+                </tr>
+                <tr>
+                  <td>BillingAlertNotification</td>
+                  <td>H-7, H-3, H-1, H-0, H+1</td>
+                  <td>Vendor admin</td>
+                  <td>database + mail</td>
+                </tr>
+                <tr>
+                  <td>AgentDisconnectedNotification</td>
+                  <td>WA agent terputus</td>
+                  <td>Vendor admin</td>
+                  <td>database + mail</td>
+                </tr>
+                <tr>
+                  <td>BillingPaymentReceivedNotification</td>
+                  <td>Vendor upload bukti bayar</td>
+                  <td>Super admin</td>
+                  <td>database + mail</td>
+                </tr>
+                <tr>
+                  <td>BillingPaymentApprovedNotification</td>
+                  <td>Super admin approve</td>
+                  <td>Vendor admin</td>
+                  <td>database + mail</td>
+                </tr>
+                <tr>
+                  <td>HotLeadAlertNotification</td>
+                  <td>Lead stage → HOT / READY_FOR_HUMAN</td>
+                  <td>Vendor admin</td>
+                  <td>database only</td>
+                </tr>
+                <tr>
+                  <td>AgentSlotLimitNotification</td>
+                  <td>Slot penuh saat tambah agent</td>
+                  <td>Vendor admin</td>
+                  <td>database only</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="grid-2" style="margin-top: 18px">
+            <div class="card new-gap">
+              <div class="mini-title">In-App Notification Bell</div>
+              <ul class="list-tight muted">
+                <li>Livewire component: <code>NotificationBell</code></li>
+                <li>Unread count badge di header semua halaman</li>
+                <li>Dropdown list notifikasi dengan timestamp relatif</li>
+                <li>Mark as read individual + mark all read</li>
+                <li>Link ke resource yang relevan (lead, billing, agent)</li>
+                <li>Poll setiap 30 detik via Livewire polling</li>
+              </ul>
+            </div>
+            <div class="card new-gap">
+              <div class="mini-title">Queue Config untuk Notifications</div>
+              <ul class="list-tight muted">
+                <li>
+                  Semua notification via queue (implement
+                  <code>ShouldQueue</code>)
+                </li>
+                <li>
+                  HandoffCreated, BillingAlert → queue <strong>medium</strong>
+                </li>
+                <li>HotLead, SlotLimit → queue <strong>low</strong></li>
+                <li>Dev email: Mailpit (localhost:8025)</li>
+                <li>Prod email: SMTP (Mailgun, SendGrid, atau hosting SMTP)</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ONBOARDING (NEW) -->
+        <section id="onboarding">
+          <h2 class="section-title">
+            <span class="dot"></span>Tenant Onboarding
+            <span class="gap-badge">v2 — Baru</span>
+          </h2>
+          <div class="card new-gap">
+            <p>
+              <strong>MVP: Onboarding manual oleh super admin.</strong> Tidak
+              ada self-register untuk vendor. Super admin yang buat tenant baru
+              dan kirim invitation email.
+            </p>
+            <div class="grid-2" style="margin-top: 16px">
+              <div>
+                <div class="mini-title">Flow Onboarding Tenant Baru</div>
+                <div class="code">
+                  Super admin → /superadmin/tenants/create → Isi: nama vendor,
+                  slug, email admin, plan → CreateTenantAction: - Buat tenant
+                  record - Buat user (vendor_admin role) - Buat
+                  tenant_invitation (token, 48h expire) - Kirim
+                  TenantInvitationMail ke email vendor → Vendor klik link
+                  aktivasi → Set password → Masuk dashboard → siap pakai
+                </div>
+              </div>
+              <div>
+                <div class="mini-title">
+                  Form Fields (Super Admin Create Tenant)
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Field</th>
+                      <th>Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Nama vendor</td>
+                      <td>Nama bisnis, contoh: "Studio Cahaya"</td>
+                    </tr>
+                    <tr>
+                      <td>Slug</td>
+                      <td>Unik, untuk routing</td>
+                    </tr>
+                    <tr>
+                      <td>Email vendor admin</td>
+                      <td>Akun pertama</td>
+                    </tr>
+                    <tr>
+                      <td>Nama vendor admin</td>
+                      <td>Untuk greeting email</td>
+                    </tr>
+                    <tr>
+                      <td>Plan</td>
+                      <td>Dari subscription_plans</td>
+                    </tr>
+                    <tr>
+                      <td>Trial period (hari)</td>
+                      <td>Optional, 0 = langsung billing</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="card new-gap" style="margin-top: 18px">
+            <div class="mini-title">Post-MVP Roadmap: Self-Register</div>
+            <ul class="list-tight muted">
+              <li>Public registration page untuk vendor baru</li>
+              <li>Email verification flow</li>
+              <li>
+                Onboarding wizard: nama vendor, logo, setup WA agent pertama
+              </li>
+              <li>Free trial otomatis tanpa approval</li>
+              <li>Catat sebagai TODO di Phase 01 output</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- COST CONTROL (NEW) -->
+        <section id="cost">
+          <h2 class="section-title">
+            <span class="dot"></span>LLM Cost Control
+            <span class="gap-badge">v2 — Baru</span>
+          </h2>
+          <div class="card new-gap">
+            <p>
+              Setiap LLM call dicatat per tenant di <code>llm_usage_logs</code>.
+              Soft cap per plan sebagai warning threshold (tidak hard-block di
+              MVP).
+            </p>
+            <div class="grid-2" style="margin-top: 16px">
+              <div>
+                <div class="mini-title">llm_usage_logs table</div>
+                <div class="code">
+                  tenant_id BIGINT UNSIGNED conversation_id BIGINT UNSIGNED NULL
+                  mode VARCHAR(20) -- classifier/response/summary prompt_tokens
+                  INT completion_tokens INT total_tokens INT model VARCHAR(50)
+                  DEFAULT 'gpt-4.1-mini' created_at TIMESTAMP INDEX: (tenant_id,
+                  created_at) INDEX: (tenant_id, mode, created_at)
+                </div>
+              </div>
+              <div>
+                <div class="mini-title">Soft Cap per Plan (bulanan)</div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Plan</th>
+                      <th>Token Soft Cap</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Starter</td>
+                      <td>500k tokens</td>
+                      <td>Alert super admin</td>
+                    </tr>
+                    <tr>
+                      <td>Growth</td>
+                      <td>1.5M tokens</td>
+                      <td>Alert super admin</td>
+                    </tr>
+                    <tr>
+                      <td>Pro</td>
+                      <td>5M tokens</td>
+                      <td>Alert super admin</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div
+                  style="margin-top: 10px; font-size: 12px; color: var(--muted)"
+                >
+                  Hard block: post-MVP. MVP hanya log + alert super admin.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card new-gap" style="margin-top: 18px">
+            <div class="mini-title">LoggingLlmClient — Abstraction Pattern</div>
+            <div class="code">
+              LlmClientInterface └── LoggingLlmClient (wrapper) └──
+              OpenAiLlmClient (inner) Setiap call: 1. OpenAiLlmClient.complete()
+              → response dengan token usage 2. LoggingLlmClient catat ke
+              llm_usage_logs 3. Return response ke AgentOrchestrator Swap model
+              di masa depan: ganti inner implementation saja, logging tetap
+              jalan.
+            </div>
+          </div>
+        </section>
+
+        <!-- MODULES -->
+        <section id="modules">
+          <h2 class="section-title">
+            <span class="dot"></span>Module Breakdown
+          </h2>
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Module</th>
+                  <th>Responsibility</th>
+                  <th>Key Services</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Auth</td>
+                  <td>Login admin, role &amp; permission (Spatie)</td>
+                  <td>AuthService, TenantMembershipService</td>
+                </tr>
+                <tr>
+                  <td>Tenancy</td>
+                  <td>Isolasi vendor/tenant, scoping data, onboarding</td>
+                  <td>TenantResolver, TenantContext, TenantGuardService</td>
+                </tr>
+                <tr>
+                  <td>Subscriptions</td>
+                  <td>Plan, subscription period, enforcement, slot</td>
+                  <td>
+                    PlanService, SubscriptionService, AgentSlotPolicyService
+                  </td>
+                </tr>
+                <tr>
+                  <td>Billing</td>
+                  <td>Billing invoice subscription, proof upload, approval</td>
+                  <td>
+                    BillingInvoiceService, BillingApprovalService,
+                    RenewalGenerationService
+                  </td>
+                </tr>
+                <tr>
+                  <td>WhatsApp</td>
+                  <td>
+                    QR pairing (Baileys), agent state, webhook ingress, outbound
+                  </td>
+                  <td>
+                    WhatsAppAgentService, PairingService, WebhookIngressService,
+                    OutboundDispatchService
+                  </td>
+                </tr>
+                <tr>
+                  <td>Leads</td>
+                  <td>Lead profile, stage, score, assignment</td>
+                  <td>
+                    LeadService, LeadQualificationService, LeadStageService
+                  </td>
+                </tr>
+                <tr>
+                  <td>Conversations</td>
+                  <td>Message log, summary, memory, handoff, media</td>
+                  <td>
+                    ConversationService, MessageIngestService,
+                    ConversationSummaryService, LeadMemoryService
+                  </td>
+                </tr>
+                <tr>
+                  <td>AgentCore</td>
+                  <td>
+                    Context build, LLM calls (3 mode), guardrails, logging
+                  </td>
+                  <td>
+                    AgentOrchestrator, ContextAssembler, PromptBuilder,
+                    GuardrailService, LoggingLlmClient
+                  </td>
+                </tr>
+                <tr>
+                  <td>Policy Engine</td>
+                  <td>
+                    Anti-ban rules, stop conditions, quiet hours, throttling
+                  </td>
+                  <td>
+                    FollowUpPolicyService, DelayPolicyService, RiskPolicyService
+                  </td>
+                </tr>
+                <tr>
+                  <td>Knowledge</td>
+                  <td>FAQ, rules, objection handling, portfolio links</td>
+                  <td>
+                    KnowledgeService, KnowledgeRetrievalService,
+                    KnowledgeCandidateService
+                  </td>
+                </tr>
+                <tr>
+                  <td>Booking</td>
+                  <td>Pricing versions, packages, semi-dynamic form schema</td>
+                  <td>
+                    BookingSchemaService, BookingFieldValidationService,
+                    LeadBookingDataService
+                  </td>
+                </tr>
+                <tr>
+                  <td>Invoice</td>
+                  <td>Client invoice upload/create + send via Baileys</td>
+                  <td>
+                    ClientInvoiceService, ClientInvoiceDispatchService,
+                    PaymentProofRoutingService
+                  </td>
+                </tr>
+                <tr>
+                  <td>Dashboard</td>
+                  <td>
+                    Livewire pages, view models, notification bell, metrics
+                  </td>
+                  <td>
+                    DashboardMetricsService, AlertService, NotificationBell
+                    (Livewire)
+                  </td>
+                </tr>
+                <tr>
+                  <td>Notifications</td>
+                  <td>7 notification types, database + mail channels</td>
+                  <td>
+                    HandoffCreatedNotification, BillingAlertNotification, dll (7
+                    classes)
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- DATA MODEL -->
+        <section id="data">
+          <h2 class="section-title">
+            <span class="dot"></span>Data Model (High-Level)
+          </h2>
+          <div class="grid-2">
+            <div class="card">
+              <div class="mini-title">Core Tables</div>
+              <div>
+                <span class="pill">tenants</span><span class="pill">users</span
+                ><span class="pill">tenant_users</span>
+                <span class="pill new">tenant_invitations ✦</span>
+                <span class="pill">subscription_plans</span
+                ><span class="pill">subscriptions</span>
+                <span class="pill">billing_invoices</span
+                ><span class="pill">billing_payments</span>
+                <span class="pill">whatsapp_agents</span
+                ><span class="pill">whatsapp_pairings</span>
+                <span class="pill">leads</span
+                ><span class="pill">lead_profiles</span>
+                <span class="pill">conversations</span
+                ><span class="pill">messages</span>
+                <span class="pill">conversation_summaries</span
+                ><span class="pill">lead_memories</span>
+                <span class="pill">knowledge_items</span
+                ><span class="pill">knowledge_candidates</span>
+                <span class="pill">booking_form_templates</span
+                ><span class="pill">booking_fields</span>
+                <span class="pill">lead_booking_data</span>
+                <span class="pill">client_invoices</span
+                ><span class="pill">client_invoice_items</span>
+                <span class="pill">handoff_requests</span>
+                <span class="pill">policy_events</span
+                ><span class="pill">outbound_message_queue</span>
+                <span class="pill">agent_memories</span
+                ><span class="pill">audit_logs</span>
+                <span class="pill">notifications</span>
+                <span class="pill new">llm_usage_logs ✦</span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="mini-title">messages table — kolom tambahan v2</div>
+              <div class="code">
+                -- Tambahan untuk media handling message_type VARCHAR(20) NOT
+                NULL DEFAULT 'text' --
+                text|image|video|audio|document|sticker|system media_url
+                VARCHAR(500) NULL media_mime VARCHAR(100) NULL media_filename
+                VARCHAR(255) NULL wa_message_id VARCHAR(100) NULL
+              </div>
+              <div class="mini-title" style="margin-top: 14px">
+                Important Constraints
+              </div>
+              <ul class="list-tight muted">
+                <li>
+                  <code>tenant_id + phone_number</code> unik pada
+                  <strong>whatsapp_agents</strong>.
+                </li>
+                <li>
+                  Slot plan dihitung dari agent <strong>connected</strong> saja.
+                </li>
+                <li>
+                  Satu lead terikat ke agent tertentu untuk reply konsisten.
+                </li>
+                <li>Client invoice != billing invoice subscription.</li>
+                <li>llm_usage_logs scoped by tenant_id + created_at.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card" style="margin-top: 18px">
+            <div class="mini-title">Entity Relationship (Simplified)</div>
+            <div class="code">
+              Tenant ├─ has many Users (via tenant_users) ├─ has many
+              TenantInvitations ✦ ├─ has many WhatsApp Agents ├─ has one current
+              Subscription ├─ has many Billing Invoices ├─ has many Leads │ ├─
+              has one Lead Profile │ ├─ has many Conversations │ │ └─ has many
+              Messages (text + media) │ ├─ has many Handoff Requests │ └─ can
+              have many Client Invoices ├─ has many Knowledge Items ├─ has many
+              Booking Form Templates │ └─ has many Booking Fields ├─ has many
+              Pricing Versions → Packages → Package Items └─ has many
+              LlmUsageLogs ✦
+            </div>
+          </div>
+        </section>
+
+        <!-- DASHBOARD PAGES -->
+        <section id="dashboard">
+          <h2 class="section-title">
+            <span class="dot"></span>Dashboard Pages
+          </h2>
+          <div class="grid-3">
+            <div class="card">
+              <div class="mini-title">Vendor Dashboard</div>
+              <ul class="list-tight muted">
+                <li>Subscription alert banner</li>
+                <li>Agent usage card (connected/slot)</li>
+                <li>Hot leads + pending handoff count</li>
+                <li>Billing invoice summary</li>
+                <li>Notification bell (unread count) ✦</li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="mini-title">WhatsApp Agents Page</div>
+              <ul class="list-tight muted">
+                <li>List semua agent + status koneksi</li>
+                <li>Set default agent</li>
+                <li>Tambah agent → modal QR (SSE stream)</li>
+                <li>Disconnect / reconnect</li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="mini-title">Billing Page</div>
+              <ul class="list-tight muted">
+                <li>Plan aktif &amp; masa aktif</li>
+                <li>Agent connected / slot available</li>
+                <li>Billing invoice list</li>
+                <li>Upload bukti bayar</li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="mini-title">Leads Page</div>
+              <ul class="list-tight muted">
+                <li>Filter lead by stage</li>
+                <li>Lead detail + memory summary</li>
+                <li>Assigned agent info</li>
+                <li>Takeover &amp; invoice actions</li>
+                <li>Media attachments dari lead ✦</li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="mini-title">Conversation Viewer</div>
+              <ul class="list-tight muted">
+                <li>Full chat history (paginated)</li>
+                <li>Agent vs human messages</li>
+                <li>Media preview ✦</li>
+                <li>Reasoning summary for admin</li>
+                <li>Policy event timeline</li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="mini-title">Super Admin Panel</div>
+              <ul class="list-tight muted">
+                <li>Onboard tenant baru ✦</li>
+                <li>Assign/change plan</li>
+                <li>Approve billing payment</li>
+                <li>Extend/suspend tenant</li>
+                <li>LLM usage per tenant ✦</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- BUILD PHASES -->
+        <section id="phases">
+          <h2 class="section-title">
+            <span class="dot"></span>Build Phases (10 Phases)
+          </h2>
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Phase</th>
+                  <th>Fokus</th>
+                  <th>Output</th>
+                  <th>Gap Resolved</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Phase 1</td>
+                  <td>
+                    Foundation: tenancy, auth, users, roles, onboarding tenant
+                  </td>
+                  <td>Core skeleton + invitation flow</td>
+                  <td>Onboarding ✦</td>
+                </tr>
+                <tr>
+                  <td>Phase 2</td>
+                  <td>
+                    Subscription plans, billing invoice core, slot enforcement
+                  </td>
+                  <td>Billing engine</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>Phase 3</td>
+                  <td>
+                    Baileys sidecar + WA agent + QR pairing + webhook ingress
+                  </td>
+                  <td>WA integration layer</td>
+                  <td>Baileys Bridge ✦</td>
+                </tr>
+                <tr>
+                  <td>Phase 4</td>
+                  <td>
+                    Leads, conversations, messages (+ media), memory, handoff
+                  </td>
+                  <td>Chat engine + media storage</td>
+                  <td>Media Handling ✦</td>
+                </tr>
+                <tr>
+                  <td>Phase 5</td>
+                  <td>Knowledge + booking schema</td>
+                  <td>Knowledge retrieval</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>Phase 6</td>
+                  <td>
+                    Agent Core: LLM orchestration, 3 mode, guardrails, cost
+                    logging
+                  </td>
+                  <td>AI brain + usage tracking</td>
+                  <td>Cost Control ✦</td>
+                </tr>
+                <tr>
+                  <td>Phase 7</td>
+                  <td>
+                    Client invoice workflow: create/upload/send/payment proof
+                  </td>
+                  <td>Invoice delivery</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>Phase 8</td>
+                  <td>
+                    Dashboard Livewire: semua pages + notification bell + media
+                    viewer
+                  </td>
+                  <td>Full UI</td>
+                  <td>Notifications UI ✦</td>
+                </tr>
+                <tr>
+                  <td>Phase 9</td>
+                  <td>Queues, Horizon, scheduler, 7 notification types</td>
+                  <td>Async infrastructure + alerts</td>
+                  <td>Notifications ✦</td>
+                </tr>
+                <tr>
+                  <td>Phase 10</td>
+                  <td>
+                    Hardening: tests, N+1 audit, index verification, security
+                    pass, VPS deploy checklist
+                  </td>
+                  <td>Production ready</td>
+                  <td>—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- DEPLOYMENT -->
+        <section id="deploy">
+          <h2 class="section-title">
+            <span class="dot"></span>Deployment, Scale, dan Cost Strategy
+          </h2>
+          <div class="grid-2">
+            <div class="card">
+              <div class="mini-title">Dev Stack (Docker — Windows)</div>
+              <div class="code">
+                services: app # Laravel PHP-FPM baileys-svc # Node.js Baileys
+                mysql # MySQL 8 redis # Redis 7 nginx # Reverse proxy mailpit #
+                Email dev (localhost:8025) Tunnel: Cloudflare Tunnel / ngrok
+                (expose localhost ke WA webhook)
+              </div>
+            </div>
+            <div class="card">
+              <div class="mini-title">Production VPS Stack</div>
+              <div class="code">
+                Internet → Nginx (reverse proxy) → PHP-FPM (Laravel app) →
+                Node.js (Baileys sidecar) → Queue Workers (Supervisor + Horizon)
+                → Scheduler (1 cron entry) → MySQL 8+ → Redis 7+ → Object
+                Storage (S3/local) → SMTP (Mailgun/SendGrid)
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-top: 18px">
+            <div class="mini-title">Server Sizing</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Stage</th>
+                  <th>Rekomendasi</th>
+                  <th>Catatan</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>MVP kecil</td>
+                  <td>2 vCPU, 4 GB RAM, SSD 80 GB</td>
+                  <td>
+                    App + Baileys + MySQL + Redis di 1 server. Horizon +
+                    Supervisor.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Early production</td>
+                  <td>4 vCPU, 8 GB RAM, SSD 120+ GB</td>
+                  <td>2–4 queue worker, monitoring dasar.</td>
+                </tr>
+                <tr>
+                  <td>Growth</td>
+                  <td>App 4–8 vCPU / DB &amp; Redis dipisah</td>
+                  <td>Worker terpisah, read replicas, S3 untuk media.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card" style="margin-top: 18px">
+            <div class="mini-title">Scale Path</div>
+            <div class="code">
+              Phase awal (1 server): - 1 web app (Laravel) - 1 Baileys sidecar -
+              1 queue worker - 1 scheduler - 1 MySQL - 1 Redis Saat tumbuh: -
+              Pisah web dan queue worker instances - Tambah worker khusus
+              outbound/send jobs (high queue) - Redis dedicated - MySQL read
+              replica untuk dashboard queries - Object storage external
+              (Cloudflare R2 / Minio) untuk media - Baileys sidecar bisa scale
+              horizontal jika agent count tinggi
+            </div>
+          </div>
+        </section>
+
+        <!-- PERFORMANCE -->
+        <section id="performance">
+          <h2 class="section-title">
+            <span class="dot"></span>Performance, Indexing, dan Anti-Spaghetti
+            Rules
+          </h2>
+          <div class="grid-2">
+            <div class="card">
+              <div class="mini-title">Indexing Minimum</div>
+              <ul class="list-tight muted" style="font-size: 12px">
+                <li><code>tenants</code>: index <code>(slug)</code> unique.</li>
+                <li>
+                  <code>tenant_invitations</code>: unique <code>(token)</code>,
+                  index <code>(expires_at)</code>.
+                </li>
+                <li>
+                  <code>leads</code>: unique
+                  <code>(tenant_id, phone_e164)</code>, index
+                  <code>(tenant_id, status)</code>.
+                </li>
+                <li>
+                  <code>conversations</code>: index
+                  <code>(tenant_id, lead_id)</code>,
+                  <code>(tenant_id, updated_at)</code>.
+                </li>
+                <li>
+                  <code>messages</code>: index
+                  <code>(conversation_id, created_at)</code>,
+                  <code>(tenant_id, message_type, created_at)</code>.
+                </li>
+                <li>
+                  <code>whatsapp_agents</code>: unique
+                  <code>(tenant_id, phone_number)</code>, index
+                  <code>(tenant_id, status)</code>.
+                </li>
+                <li>
+                  <code>subscriptions</code>: index
+                  <code>(tenant_id, status, ends_at)</code>.
+                </li>
+                <li>
+                  <code>billing_invoices</code>: index
+                  <code>(tenant_id, status, due_date)</code>.
+                </li>
+                <li>
+                  <code>knowledge_items</code>: index
+                  <code>(tenant_id, type, is_active)</code>.
+                </li>
+                <li>
+                  <code>client_invoices</code>: index
+                  <code>(tenant_id, lead_id, status)</code>.
+                </li>
+                <li>
+                  <code>llm_usage_logs</code>: index
+                  <code>(tenant_id, created_at)</code>,
+                  <code>(tenant_id, mode, created_at)</code>.
+                </li>
+                <li>
+                  <code>notifications</code>: index
+                  <code>(notifiable_id, notifiable_type, read_at)</code>.
+                </li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="mini-title">Cache Candidates</div>
+              <ul class="list-tight muted">
+                <li>Tenant active subscription + plan limits</li>
+                <li>Connected WA agents by tenant</li>
+                <li>Active booking schema per tenant/form_type</li>
+                <li>Active knowledge headers/summaries per tenant</li>
+                <li>LLM prompt templates</li>
+                <li>Anti-ban policy settings per tenant</li>
+                <li>Dashboard metrics (snapshot, refresh tiap 30 menit)</li>
+              </ul>
+              <div class="mini-title" style="margin-top: 14px">
+                Queue Priorities
+              </div>
+              <ul class="list-tight muted">
+                <li><strong>high</strong>: real-time inbound reply jobs</li>
+                <li>
+                  <strong>medium</strong>: invoice send, handoff notifications,
+                  billing alerts
+                </li>
+                <li>
+                  <strong>low</strong>: auto follow-up, summaries, knowledge
+                  candidates, usage snapshot
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- APPENDIX -->
+        <section id="appendix">
+          <h2 class="section-title">
+            <span class="dot"></span>Appendix: Rules yang Sudah Terkunci
+          </h2>
+          <div class="card">
+            <details open>
+              <summary>Operational Rules</summary>
+              <ul class="list-tight muted">
+                <li>Availability final ditangani manusia.</li>
+                <li>Custom package ditangani manusia.</li>
+                <li>Verifikasi DP/pembayaran ditangani manusia.</li>
+                <li>
+                  Portfolio diarahkan ke kanal seperti Instagram, lalu handoff
+                  jika perlu.
+                </li>
+                <li>Media non-text disimpan; AI hanya proses text.</li>
+              </ul>
+            </details>
+            <details>
+              <summary>WhatsApp Agent Rules</summary>
+              <ul class="list-tight muted">
+                <li>Connected tidak expired sampai admin disconnect.</li>
+                <li>
+                  Disconnected dianggap tidak terdaftar dan tidak mengurangi
+                  slot.
+                </li>
+                <li>
+                  Scan ulang nomor disconnected = reconnect (pakai record lama).
+                </li>
+                <li>Scan ulang nomor connected = reject.</li>
+                <li>
+                  Session Baileys tersimpan di filesystem (persistent across
+                  restart).
+                </li>
+              </ul>
+            </details>
+            <details>
+              <summary>QR Pairing Rules</summary>
+              <ul class="list-tight muted">
+                <li>
+                  Auto-generate QR baru hanya jika admin masih di halaman
+                  pairing (SSE active).
+                </li>
+                <li>
+                  Keluar halaman/close/cancel → POST /agents/:id/cancel → stop
+                  QR generation.
+                </li>
+                <li>QR tidak reusable.</li>
+                <li>QR rotate tiap ~20 detik secara otomatis via Baileys.</li>
+              </ul>
+            </details>
+            <details>
+              <summary>Subscription Rules</summary>
+              <ul class="list-tight muted">
+                <li>Plan di-assign manual oleh super admin.</li>
+                <li>Payment subscription diverifikasi manual.</li>
+                <li>
+                  Billing invoice subscription dibuat otomatis H-7 sebelum
+                  expired.
+                </li>
+                <li>
+                  Dashboard vendor harus menampilkan warning sebelum masa aktif
+                  habis.
+                </li>
+                <li>Notifikasi email dikirim di H-7, H-3, H-1, H-0, H+1.</li>
+              </ul>
+            </details>
+            <details>
+              <summary>Anti-Ban Rules</summary>
+              <ul class="list-tight muted">
+                <li>Inbound-first only.</li>
+                <li>Maksimal 2 follow-up per inquiry.</li>
+                <li>Delay natural dan bundling pesan masuk.</li>
+                <li>
+                  Adaptive throttle per nomor agent, bukan fixed global delay.
+                </li>
+                <li>
+                  Stop automation saat user negatif, opt-out, atau handoff.
+                </li>
+              </ul>
+            </details>
+            <details>
+              <summary>LLM Rules</summary>
+              <ul class="list-tight muted">
+                <li>1 model only: gpt-4.1-mini.</li>
+                <li>Never send full chat history.</li>
+                <li>
+                  Context: recent 6 messages + summary + lead memory + max 3
+                  knowledge items.
+                </li>
+                <li>Classifier → Response → Summary (3 mode terpisah).</li>
+                <li>Setiap LLM call dicatat ke llm_usage_logs.</li>
+                <li>Soft cap per plan sebagai warning threshold.</li>
+              </ul>
+            </details>
+            <details>
+              <summary>Media Handling Rules (v2)</summary>
+              <ul class="list-tight muted">
+                <li>
+                  AI hanya proses text. Media disimpan, tidak di-analyze di MVP.
+                </li>
+                <li>
+                  Image/document setelah invoice sent → auto-detect sebagai
+                  bukti bayar.
+                </li>
+                <li>Voice note tidak di-transcribe di MVP.</li>
+                <li>Sticker dan reaction diabaikan.</li>
+              </ul>
+            </details>
+            <details>
+              <summary>Notification Rules (v2)</summary>
+              <ul class="list-tight muted">
+                <li>Semua notification via queue (ShouldQueue).</li>
+                <li>
+                  database channel: semua notif. mail channel: event kritis
+                  saja.
+                </li>
+                <li>
+                  Admin tidak perlu buka dashboard untuk tahu event penting.
+                </li>
+              </ul>
+            </details>
+          </div>
+        </section>
+
+        <div class="footer-note">
+          Dokumen ini adalah <strong>v2 (Gap Resolved)</strong> dari Master
+          Blueprint Wedding Vendor WhatsApp Sales Agent SaaS.<br />
+          Keputusan final yang dikunci: Laravel 13 modular monolith, PHP 8.4+,
+          GPT-4.1 Mini single-model, Baileys (@whiskeysockets/baileys) sebagai
+          WA provider, Docker untuk dev (Windows), VPS untuk production,
+          multi-WA agent via QR, invoice delivery, subscription billing
+          manual-approval, anti-ban guardrails, notification system 7 types,
+          media handling, tenant onboarding manual (MVP), dan LLM cost control
+          via usage logging.<br /><br />
+          Gap yang telah dilengkapi: Baileys Bridge Spec • Notification System •
+          Media Handling • Tenant Onboarding • LLM Cost Control • Docker Dev
+          Stack.
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
