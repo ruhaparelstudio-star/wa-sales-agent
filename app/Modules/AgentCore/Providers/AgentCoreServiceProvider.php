@@ -3,8 +3,10 @@
 namespace App\Modules\AgentCore\Providers;
 
 use App\Modules\AgentCore\Contracts\LlmClientInterface;
+use App\Modules\AgentCore\Contracts\TurnDecisionServiceInterface;
 use App\Modules\AgentCore\Services\LoggingLlmClient;
 use App\Modules\AgentCore\Services\OpenAiLlmClient;
+use App\Modules\AgentCore\Services\TurnDecisionService;
 use Illuminate\Support\ServiceProvider;
 use OpenAI;
 use OpenAI\Contracts\ClientContract;
@@ -38,6 +40,8 @@ class AgentCoreServiceProvider extends ServiceProvider
         $this->app->bind(LlmClientInterface::class, function ($app) {
             return new LoggingLlmClient($app->make(OpenAiLlmClient::class));
         });
+
+        $this->app->bind(TurnDecisionServiceInterface::class, TurnDecisionService::class);
     }
 
     public function boot(): void {}

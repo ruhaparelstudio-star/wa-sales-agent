@@ -3,12 +3,18 @@
 namespace App\Modules\AgentCore\Services;
 
 use App\Modules\AgentCore\Contracts\LlmClientInterface;
+use App\Modules\AgentCore\Contracts\TurnDecisionServiceInterface;
 use App\Modules\AgentCore\DTOs\ClassifierOutput;
+use App\Modules\AgentCore\DTOs\FinalTurnDecision;
 use App\Modules\AgentCore\DTOs\InterpretationResult;
+use App\Modules\AgentCore\DTOs\SharedConversationContext;
+use App\Modules\AgentCore\DTOs\TurnDecisionInput;
+use App\Modules\AgentCore\Enums\FinalAction;
 use App\Modules\AgentCore\Enums\LlmMode;
 use App\Modules\AgentCore\Enums\TurnOutcomeType;
 use App\Modules\AgentCore\Exceptions\InvalidClassifierOutputException;
 use App\Modules\AgentCore\Support\AgentLog;
+use App\Modules\AgentCore\Support\DecisionTrace;
 use App\Modules\Booking\Enums\FormType;
 use App\Modules\Booking\Services\BookingSchemaService;
 use App\Modules\Booking\Services\LeadBookingDataService;
@@ -62,6 +68,7 @@ class AgentOrchestrator
         private readonly ContextAwareFallbackBuilder $contextAwareFallbackBuilder,
         private readonly FallbackGuardService $fallbackGuardService,
         private readonly ResponseEvaluatorService $responseEvaluatorService,
+        private readonly TurnDecisionServiceInterface $turnDecisionService,
     ) {}
 
     public function handleInbound(Message $message, Lead $lead, Conversation $conv, ?string $traceId = null): void
@@ -289,7 +296,19 @@ class AgentOrchestrator
         $conv->refresh();
         $this->conversationStateService->applyInterpretationResult($conv, $lead->fresh(), $interpretation, $classifier);
 
-        if ($classifier->intent === 'opt_out') {
+        $decision = $this->decideTurn($lead, $conv, $message, $classifier, $interpretation);
+        DecisionTrace::log($decision, ['message_id' => $message->id]);
+        $decisionAction = $decision->finalDecision['action'] ?? null;
+
+        if ($decisionAction === FinalAction::DoNotReply) {
+            $reason = (string) ($decision->finalDecision['fallback_reason'] ?? 'do_not_reply');
+            $this->logNoReplyExit($lead, $conv, $message, $reason, [
+                'decision_source' => 'turn_decision_service',
+            ]);
+            return;
+        }
+
+        if ($decisionAction === FinalAction::ReplyWithOptOut) {
             $turnLogger->setResponse('opt_out', null);
             $this->handleOptOut($lead, $conv, $agent, $message);
             $this->dispatchSummaryRefresh($conv);
@@ -2117,6 +2136,49 @@ class AgentOrchestrator
     /**
      * @param  array<string, mixed>  $context
      */
+    private function decideTurn(
+        Lead $lead,
+        Conversation $conv,
+        Message $message,
+        ClassifierOutput $classifier,
+        InterpretationResult $interpretation,
+    ): FinalTurnDecision {
+        $state = $conv->state()->first();
+
+        $context = new SharedConversationContext(
+            conversationId: (string) $conv->id,
+            activeTopic: $state?->last_answered_topic,
+            currentStage: $conv->stageEnum()->value,
+            stageGoal: null,
+            latestUserAsk: (string) $message->content,
+            recentSummary: null,
+            filledSlots: is_array($state?->filled_slots) ? $state->filled_slots : [],
+            unresolvedQuestions: array_values(is_array($state?->unresolved_questions) ? $state->unresolved_questions : []),
+            askedFields: $conv->askedFields(),
+            nextExpectedField: $conv->next_expected_field,
+            nextBestAction: $state?->next_best_action,
+        );
+
+        $businessFlags = [
+            'handoff_required' => $classifier->needsHandoff,
+            'handoff_reason' => $classifier->handoffReason,
+            'negative_sentiment' => $classifier->sentiment === 'negative' && $classifier->confidence >= 0.8,
+        ];
+
+        $input = new TurnDecisionInput(
+            turnId: (string) ($this->currentTraceId() ?? $message->id),
+            conversationId: (string) $conv->id,
+            leadId: (string) $lead->id,
+            context: $context,
+            ruleInterpretation: $interpretation,
+            classifierResult: $classifier,
+            currentStage: $conv->stageEnum(),
+            businessFlags: $businessFlags,
+        );
+
+        return $this->turnDecisionService->decide($input);
+    }
+
     private function logNoReplyExit(
         Lead $lead,
         Conversation $conv,

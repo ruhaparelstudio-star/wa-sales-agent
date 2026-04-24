@@ -161,6 +161,7 @@ function buildOrchestrator(LlmClientInterface $llm, ?BookingSchemaService $booki
         $contextAwareFallbackBuilder,
         $fallbackGuardService,
         new \App\Modules\AgentCore\Services\ResponseEvaluatorService(),
+        new \App\Modules\AgentCore\Services\TurnDecisionService(),
     );
 }
 
