@@ -48,7 +48,7 @@ class PackageDetailsInquiryHandler
 
         return new BusinessResponsePayload(
             payloadType: 'package_details',
-            action: FinalAction::ReplyWithPackageDetails,
+            action: FinalAction::ReplyWithGroundedPackage,
             data: array_merge($presentation, [
                 'scope' => $scope,
                 'event_type' => $eventType,

@@ -6,7 +6,9 @@ enum FinalAction: string
 {
     case RespondToUser = 'respond_to_user';
     case ReplyWithPackageDetails = 'reply_with_package_details';
+    case ReplyWithGroundedPackage = 'reply_with_grounded_package';
     case ReplyWithPriceDetails = 'reply_with_price_details';
+    case ReplyWithPricelist = 'reply_with_pricelist';
     case ReplyWithPackageComparison = 'reply_with_package_comparison';
     case AskForBookingField = 'ask_for_booking_field';
     case GuideToBooking = 'guide_to_booking';

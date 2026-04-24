@@ -124,6 +124,16 @@ function buildOrchestrator(LlmClientInterface $llm, ?BookingSchemaService $booki
     $dispatchService = app(OutboundDispatchService::class);
 
     $bookingSchemaService ??= new BookingSchemaService();
+    app()->instance(BookingSchemaService::class, $bookingSchemaService);
+    foreach ([
+        \App\Modules\AgentCore\Dispatch\ActionDispatcher::class,
+        \App\Modules\AgentCore\Handlers\BookingFieldReplyHandler::class,
+        \App\Modules\AgentCore\Handlers\PackageDetailsInquiryHandler::class,
+        \App\Modules\AgentCore\Handlers\PricelistInquiryHandler::class,
+        \App\Modules\AgentCore\Services\BusinessPayloadResponder::class,
+    ] as $class) {
+        app()->forgetInstance($class);
+    }
 
     return new AgentOrchestrator(
         $llm,
@@ -142,10 +152,7 @@ function buildOrchestrator(LlmClientInterface $llm, ?BookingSchemaService $booki
         $handoffService,
         $dispatchService,
         $summaryService,
-        new PricelistService(),
         new KnowledgeRetrievalService(),
-        $bookingSchemaService,
-        $bookingDataService,
         $stageService,
         new RecordAskedFieldAction(),
         new ConversationStateService(
@@ -162,14 +169,7 @@ function buildOrchestrator(LlmClientInterface $llm, ?BookingSchemaService $booki
         $fallbackGuardService,
         new \App\Modules\AgentCore\Services\ResponseEvaluatorService(),
         new \App\Modules\AgentCore\Services\TurnDecisionService(),
-        new \App\Modules\AgentCore\Handlers\BookingFieldReplyHandler(
-            $bookingDataService,
-            new \App\Modules\Booking\Services\BookingFieldValidationService(),
-        ),
-        new \App\Modules\AgentCore\Handlers\PackageDetailsInquiryHandler(
-            new KnowledgeRetrievalService(),
-        ),
-        new \App\Modules\AgentCore\Services\BusinessPayloadResponder(),
+        app(\App\Modules\AgentCore\Dispatch\ActionDispatcher::class),
     );
 }
 

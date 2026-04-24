@@ -25,7 +25,7 @@ class PricelistInquiryHandler
 
         return new BusinessResponsePayload(
             payloadType: 'pricelist_info',
-            action: FinalAction::ReplyWithPriceDetails,
+            action: FinalAction::ReplyWithPricelist,
             data: [
                 'intent' => $input->intent,
                 'delivery_status' => $deliveryStatus,

@@ -111,6 +111,9 @@ class TurnDecisionService implements TurnDecisionServiceInterface
             $handoffReason = null;
         }
 
+        $shouldSendPricelist = $this->shouldSendPricelist($input, $finalIntent);
+        $shouldSendGroundedPackage = $this->shouldSendGroundedPackage($input, $finalIntent);
+
         $action = $this->resolveAction(
             $finalIntent,
             $negativeSentiment,
@@ -119,6 +122,8 @@ class TurnDecisionService implements TurnDecisionServiceInterface
             $input->fallbackEligible,
             $forceFallbackReason,
             (bool) ($input->businessFlags['booking_field_reply_candidate'] ?? false),
+            $shouldSendPricelist,
+            $shouldSendGroundedPackage,
         );
 
         $stageAfter = $guardOverrideStage
@@ -162,6 +167,8 @@ class TurnDecisionService implements TurnDecisionServiceInterface
             'handoff_reason' => $handoffReason,
             'next_expected_field' => $input->context->nextExpectedField,
             'latest_user_ask' => $input->context->latestUserAsk,
+            'should_send_pricelist' => $shouldSendPricelist,
+            'should_send_grounded_package' => $shouldSendGroundedPackage,
         ];
 
         $finalDecision = [
@@ -249,6 +256,8 @@ class TurnDecisionService implements TurnDecisionServiceInterface
         bool $fallbackEligible,
         ?string $forceFallbackReason,
         bool $bookingFieldReplyCandidate,
+        bool $shouldSendPricelist,
+        bool $shouldSendGroundedPackage,
     ): FinalAction {
         if ($noReply) {
             return FinalAction::DoNotReply;
@@ -273,6 +282,14 @@ class TurnDecisionService implements TurnDecisionServiceInterface
             return FinalAction::ReplyWithFallback;
         }
 
+        if ($shouldSendPricelist && in_array($finalIntent, ['tanya_harga', 'tanya_paket', 'bandingkan_paket'], true)) {
+            return FinalAction::ReplyWithPricelist;
+        }
+
+        if ($shouldSendGroundedPackage && in_array($finalIntent, ['tanya_paket', 'bandingkan_paket'], true)) {
+            return FinalAction::ReplyWithGroundedPackage;
+        }
+
         return match ($finalIntent) {
             'ready_to_book' => FinalAction::GuideToBooking,
             'bandingkan_paket' => FinalAction::ReplyWithPackageComparison,
@@ -286,7 +303,9 @@ class TurnDecisionService implements TurnDecisionServiceInterface
     {
         return match ($action) {
             FinalAction::ReplyWithPackageDetails,
+            FinalAction::ReplyWithGroundedPackage,
             FinalAction::ReplyWithPriceDetails,
+            FinalAction::ReplyWithPricelist,
             FinalAction::AskForBookingField => ResponseMode::BusinessPayloadToResponder,
             FinalAction::ReplyWithFallback => ResponseMode::FallbackText,
             FinalAction::RequestHumanHandoff => ResponseMode::HandoffNotice,
@@ -448,6 +467,81 @@ class TurnDecisionService implements TurnDecisionServiceInterface
             $input->ruleInterpretation?->confidence ?? 0.0,
             $input->classifierResult?->confidence ?? 0.0,
         ), 2);
+    }
+
+    private function shouldSendPricelist(TurnDecisionInput $input, string $finalIntent): bool
+    {
+        if (! in_array($finalIntent, ['tanya_harga', 'tanya_paket', 'bandingkan_paket'], true)) {
+            return false;
+        }
+
+        if (array_key_exists('should_send_pricelist', $input->businessFlags)) {
+            return (bool) $input->businessFlags['should_send_pricelist'];
+        }
+
+        if ($this->prefersTextPricingExplanation($input)) {
+            return false;
+        }
+
+        if ($this->isDirectPricelistInquiry($input)) {
+            return true;
+        }
+
+        if (! (bool) ($input->businessFlags['can_auto_send_pricelist'] ?? false)) {
+            return false;
+        }
+
+        if ((bool) ($input->businessFlags['missing_recommendation_fields'] ?? false)) {
+            return false;
+        }
+
+        return (bool) ($input->businessFlags['affirming_recent_pricelist_offer'] ?? false);
+    }
+
+    private function shouldSendGroundedPackage(TurnDecisionInput $input, string $finalIntent): bool
+    {
+        if (! in_array($finalIntent, ['tanya_paket', 'bandingkan_paket'], true)) {
+            return false;
+        }
+
+        if (array_key_exists('should_send_grounded_package', $input->businessFlags)) {
+            return (bool) $input->businessFlags['should_send_grounded_package'];
+        }
+
+        if (! (bool) ($input->businessFlags['can_send_grounded_package'] ?? false)) {
+            return false;
+        }
+
+        if ((bool) ($input->businessFlags['missing_recommendation_fields'] ?? false)) {
+            return false;
+        }
+
+        if (! $this->isDirectPackageInquiry($input) && ! (bool) ($input->businessFlags['short_package_continuation'] ?? false)) {
+            return false;
+        }
+
+        return (bool) ($input->businessFlags['grounded_package_items_available'] ?? false);
+    }
+
+    private function isDirectPricelistInquiry(TurnDecisionInput $input): bool
+    {
+        if ($this->prefersTextPricingExplanation($input)) {
+            return false;
+        }
+
+        return (bool) ($input->businessFlags['contains_direct_pricelist_keywords'] ?? false)
+            || (bool) ($input->businessFlags['pricelist_document_follow_up'] ?? false)
+            || (bool) ($input->businessFlags['affirming_recent_pricelist_offer'] ?? false);
+    }
+
+    private function isDirectPackageInquiry(TurnDecisionInput $input): bool
+    {
+        return (bool) ($input->businessFlags['direct_package_inquiry'] ?? false);
+    }
+
+    private function prefersTextPricingExplanation(TurnDecisionInput $input): bool
+    {
+        return (bool) ($input->businessFlags['prefers_text_pricing_explanation'] ?? false);
     }
 
     private function fallbackReason(FinalAction $action, ?string $forceFallbackReason, ?string $noReplyReason): ?string

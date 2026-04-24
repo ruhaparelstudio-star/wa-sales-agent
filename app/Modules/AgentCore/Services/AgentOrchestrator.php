@@ -2,9 +2,10 @@
 
 namespace App\Modules\AgentCore\Services;
 
+use App\Modules\AgentCore\Dispatch\ActionDispatcher;
+use App\Modules\AgentCore\Dispatch\TurnDispatchContext;
 use App\Modules\AgentCore\Contracts\LlmClientInterface;
 use App\Modules\AgentCore\Contracts\TurnDecisionServiceInterface;
-use App\Modules\AgentCore\DTOs\BookingFieldReplyHandlerInput;
 use App\Modules\AgentCore\DTOs\ClassifierOutput;
 use App\Modules\AgentCore\DTOs\FinalTurnDecision;
 use App\Modules\AgentCore\DTOs\InterpretationResult;
@@ -14,14 +15,8 @@ use App\Modules\AgentCore\Enums\FinalAction;
 use App\Modules\AgentCore\Enums\LlmMode;
 use App\Modules\AgentCore\Enums\TurnOutcomeType;
 use App\Modules\AgentCore\Exceptions\InvalidClassifierOutputException;
-use App\Modules\AgentCore\DTOs\PackageDetailsHandlerInput;
-use App\Modules\AgentCore\Handlers\BookingFieldReplyHandler;
-use App\Modules\AgentCore\Handlers\PackageDetailsInquiryHandler;
 use App\Modules\AgentCore\Support\AgentLog;
 use App\Modules\AgentCore\Support\DecisionTrace;
-use App\Modules\Booking\Enums\FormType;
-use App\Modules\Booking\Services\BookingSchemaService;
-use App\Modules\Booking\Services\LeadBookingDataService;
 use App\Modules\Conversations\Actions\RecordAskedFieldAction;
 use App\Modules\Conversations\Enums\ConversationStage;
 use App\Modules\Conversations\Enums\HandoffReason;
@@ -32,7 +27,6 @@ use App\Modules\Conversations\Services\ConversationStateService;
 use App\Modules\Conversations\Services\ConversationSummaryService;
 use App\Modules\Conversations\Services\HandoffRequestService;
 use App\Modules\Knowledge\Services\KnowledgeRetrievalService;
-use App\Modules\Knowledge\Services\PricelistService;
 use App\Modules\Leads\Enums\LeadStatus;
 use App\Modules\Leads\Models\Lead;
 use App\Modules\Leads\Services\LeadMemoryService;
@@ -61,10 +55,7 @@ class AgentOrchestrator
         private readonly HandoffRequestService $handoffRequestService,
         private readonly OutboundDispatchService $outboundDispatchService,
         private readonly ConversationSummaryService $conversationSummaryService,
-        private readonly PricelistService $pricelistService,
         private readonly KnowledgeRetrievalService $knowledgeRetrievalService,
-        private readonly BookingSchemaService $bookingSchemaService,
-        private readonly LeadBookingDataService $leadBookingDataService,
         private readonly ConversationStageService $conversationStageService,
         private readonly RecordAskedFieldAction $recordAskedFieldAction,
         private readonly ConversationStateService $conversationStateService,
@@ -73,9 +64,7 @@ class AgentOrchestrator
         private readonly FallbackGuardService $fallbackGuardService,
         private readonly ResponseEvaluatorService $responseEvaluatorService,
         private readonly TurnDecisionServiceInterface $turnDecisionService,
-        private readonly BookingFieldReplyHandler $bookingFieldReplyHandler,
-        private readonly PackageDetailsInquiryHandler $packageDetailsInquiryHandler,
-        private readonly BusinessPayloadResponder $businessPayloadResponder,
+        private readonly ActionDispatcher $actionDispatcher,
     ) {}
 
     public function handleInbound(Message $message, Lead $lead, Conversation $conv, ?string $traceId = null): void
@@ -154,7 +143,9 @@ class AgentOrchestrator
             return;
         }
 
-        if ($this->isDirectPricelistInquiry($message, $conv)) {
+        $usedDirectPricelistShortcut = $this->matchesDirectPricelistShortcut($message, $conv);
+
+        if ($usedDirectPricelistShortcut) {
             Log::info('[AgentOrchestrator] Direct pricelist inquiry detected', [
                 'tenant_id' => $lead->tenant_id,
                 'lead_id' => $lead->id,
@@ -165,26 +156,6 @@ class AgentOrchestrator
             $this->leadStageService->advanceStage($lead, $lead->status === LeadStatus::New ? LeadStatus::Qualified : LeadStatus::Interested);
             $this->conversationStageService->promoteForDirectPricelistInquiry($conv);
             $conv->refresh();
-            $pricelistClassifier = $this->conversationInterpretationService->toClassifierOutput($ruleInterpretation, $conv->stageEnum());
-            $this->leadMemoryService->upsert($lead, $this->mapExtractedFields($pricelistClassifier->extractedFields));
-            $this->conversationStageService->decideAndApply(
-                $conv,
-                $pricelistClassifier,
-                $this->leadMemoryService->getSnapshot($lead->fresh()),
-            );
-            $conv->refresh();
-            $this->conversationStateService->applyInterpretationResult(
-                $conv,
-                $lead->fresh(),
-                $ruleInterpretation,
-                $pricelistClassifier,
-            );
-            $turnLogger->setIntent('tanya_harga', null)
-                ->setResponse('pricelist', '[pricelist]')
-                ->setTool('pricelist_share');
-            $this->handlePricelistInquiry($lead, $conv, 'tanya_harga', $agent, $message);
-            $this->dispatchSummaryRefresh($conv);
-            return;
         }
 
         $intentResolution = [
@@ -194,83 +165,102 @@ class AgentOrchestrator
             'override_reason' => 'rule_only_fallback',
         ];
 
-        try {
-            $classifier = $this->runClassifier($lead, $conv);
-            $interpretation = $this->conversationInterpretationService->interpret((string) $message->content, $classifier);
-            $interpretation = $this->continueInterpretationFromHistory($message, $conv, $interpretation);
-            $intentResolution = $this->conversationInterpretationService->resolveClassifierOutput($classifier, $interpretation, [
-                'protect_analyzer_intents' => ['complaint', 'objection_handling', 'clarification'],
-                'block_rule_ready_to_book' => true,
-            ]);
-            $classifier = $intentResolution['classifier'];
-        } catch (Throwable $e) {
-            Log::error('[AgentOrchestrator] Classifier failed', [
-                'tenant_id' => $lead->tenant_id,
-                'lead_id'   => $lead->id,
-                'error'     => $e->getMessage(),
-            ]);
-            AgentLog::warning('classifier.failed', ['error' => $e->getMessage()]);
+        if ($usedDirectPricelistShortcut) {
+            $interpretation = $ruleInterpretation->hasClearIntent()
+                ? $ruleInterpretation
+                : new InterpretationResult(
+                    canonicalIntent: 'price_inquiry',
+                    legacyIntent: 'tanya_harga',
+                    slots: $ruleInterpretation->slots,
+                    confidence: max($ruleInterpretation->confidence, 0.92),
+                    source: 'shortcut+rules',
+                );
+            $classifier = $this->conversationInterpretationService->toClassifierOutput($interpretation, $conv->stageEnum());
+            $intentResolution = [
+                'raw_analyzer_intent' => $interpretation->legacyIntent,
+                'rule_intent' => $interpretation->legacyIntent,
+                'final_intent' => $classifier->intent,
+                'override_reason' => 'direct_pricelist_shortcut',
+            ];
+        } else {
+            try {
+                $classifier = $this->runClassifier($lead, $conv);
+                $interpretation = $this->conversationInterpretationService->interpret((string) $message->content, $classifier);
+                $interpretation = $this->continueInterpretationFromHistory($message, $conv, $interpretation);
+                $intentResolution = $this->conversationInterpretationService->resolveClassifierOutput($classifier, $interpretation, [
+                    'protect_analyzer_intents' => ['complaint', 'objection_handling', 'clarification'],
+                    'block_rule_ready_to_book' => true,
+                ]);
+                $classifier = $intentResolution['classifier'];
+            } catch (Throwable $e) {
+                Log::error('[AgentOrchestrator] Classifier failed', [
+                    'tenant_id' => $lead->tenant_id,
+                    'lead_id'   => $lead->id,
+                    'error'     => $e->getMessage(),
+                ]);
+                AgentLog::warning('classifier.failed', ['error' => $e->getMessage()]);
 
-            if (! $ruleInterpretation->hasClearIntent()) {
+                if (! $ruleInterpretation->hasClearIntent()) {
+                    Log::warning('[AgentOrchestrator] Classifier fallback selected', [
+                        'tenant_id' => $lead->tenant_id,
+                        'lead_id' => $lead->id,
+                        'conversation_id' => $conv->id,
+                        'behavior' => 'stage_aware_fallback_reply',
+                        'reason' => $e->getMessage(),
+                    ]);
+                    $turnLogger->markFallback('classifier_failed_no_rule_intent');
+
+                    $fallback = $this->queueControlledClassifierFallbackReply(
+                        $lead,
+                        $conv,
+                        $agent,
+                        $message,
+                        $ruleInterpretation,
+                        'classifier_invalid_output_unclear_rules',
+                    );
+
+                    if ($fallback !== null) {
+                        $turnLogger
+                            ->setResponse('fallback', $fallback['message'])
+                            ->setNextBestAction($fallback['next_best_action']);
+                        $this->dispatchSummaryRefresh($conv);
+                        return;
+                    }
+
+                    $this->logNoReplyExit($lead, $conv, $message, 'classifier_failed_no_rule_intent_no_dispatch', [
+                        'error' => $e->getMessage(),
+                    ]);
+                    return;
+                }
+
                 Log::warning('[AgentOrchestrator] Classifier fallback selected', [
                     'tenant_id' => $lead->tenant_id,
                     'lead_id' => $lead->id,
                     'conversation_id' => $conv->id,
-                    'behavior' => 'stage_aware_fallback_reply',
+                    'behavior' => 'intent_aware_rule_fallback',
                     'reason' => $e->getMessage(),
                 ]);
-                $turnLogger->markFallback('classifier_failed_no_rule_intent');
-
-                $fallback = $this->queueControlledClassifierFallbackReply(
-                    $lead,
-                    $conv,
-                    $agent,
-                    $message,
-                    $ruleInterpretation,
-                    'classifier_invalid_output_unclear_rules',
-                );
-
-                if ($fallback !== null) {
-                    $turnLogger
-                        ->setResponse('fallback', $fallback['message'])
-                        ->setNextBestAction($fallback['next_best_action']);
-                    $this->dispatchSummaryRefresh($conv);
-                    return;
-                }
-
-                $this->logNoReplyExit($lead, $conv, $message, 'classifier_failed_no_rule_intent_no_dispatch', [
-                    'error' => $e->getMessage(),
-                ]);
-                return;
+                $interpretation = $ruleInterpretation;
+                $classifier = $this->conversationInterpretationService->toClassifierOutput($interpretation, $conv->stageEnum());
+                $intentResolution = [
+                    'raw_analyzer_intent' => 'classifier_failed',
+                    'rule_intent' => $interpretation->legacyIntent,
+                    'final_intent' => $classifier->intent,
+                    'override_reason' => 'classifier_failed_using_rule',
+                ];
+                $turnLogger->markFallback('classifier_failed_using_rule');
             }
 
-            Log::warning('[AgentOrchestrator] Classifier fallback selected', [
-                'tenant_id' => $lead->tenant_id,
-                'lead_id' => $lead->id,
-                'conversation_id' => $conv->id,
-                'behavior' => 'intent_aware_rule_fallback',
-                'reason' => $e->getMessage(),
-            ]);
-            $interpretation = $ruleInterpretation;
-            $classifier = $this->conversationInterpretationService->toClassifierOutput($interpretation, $conv->stageEnum());
-            $intentResolution = [
-                'raw_analyzer_intent' => 'classifier_failed',
-                'rule_intent' => $interpretation->legacyIntent,
-                'final_intent' => $classifier->intent,
-                'override_reason' => 'classifier_failed_using_rule',
-            ];
-            $turnLogger->markFallback('classifier_failed_using_rule');
+            $intentResolution = $this->applyIntentGuards(
+                $classifier,
+                $message,
+                $conv,
+                (string) ($intentResolution['raw_analyzer_intent'] ?? $classifier->intent),
+                $intentResolution['rule_intent'] ?? $interpretation->legacyIntent,
+                $intentResolution['override_reason'] ?? null,
+            );
+            $classifier = $intentResolution['classifier'];
         }
-
-        $intentResolution = $this->applyIntentGuards(
-            $classifier,
-            $message,
-            $conv,
-            (string) ($intentResolution['raw_analyzer_intent'] ?? $classifier->intent),
-            $intentResolution['rule_intent'] ?? $interpretation->legacyIntent,
-            $intentResolution['override_reason'] ?? null,
-        );
-        $classifier = $intentResolution['classifier'];
 
         $turnLogger
             ->setIntent($classifier->intent, $classifier->confidence)
@@ -305,91 +295,36 @@ class AgentOrchestrator
 
         $decision = $this->decideTurn($lead, $conv, $message, $classifier, $interpretation);
         DecisionTrace::log($decision, ['message_id' => $message->id]);
-        $decisionAction = $decision->finalDecision['action'] ?? null;
 
-        if ($decisionAction === FinalAction::DoNotReply) {
-            $reason = (string) ($decision->finalDecision['fallback_reason'] ?? 'do_not_reply');
-            $this->logNoReplyExit($lead, $conv, $message, $reason, [
+        $dispatchResult = $this->actionDispatcher->dispatch(
+            $decision,
+            new TurnDispatchContext(
+                lead: $lead,
+                conversation: $conv,
+                message: $message,
+                agent: $agent,
+                turnLogger: $turnLogger,
+                classifier: $classifier,
+                interpretation: $interpretation,
+            ),
+        );
+
+        if ($dispatchResult->noReplyReason !== null) {
+            $this->logNoReplyExit($lead, $conv, $message, $dispatchResult->noReplyReason, [
                 'decision_source' => 'turn_decision_service',
             ]);
             return;
         }
 
-        if ($decisionAction === FinalAction::ReplyWithOptOut) {
-            $turnLogger->setResponse('opt_out', null);
-            $this->handleOptOut($lead, $conv, $agent, $message);
-            $this->dispatchSummaryRefresh($conv);
-            return;
-        }
-
-        if ($decisionAction === FinalAction::RequestHumanHandoff) {
-            $negativeSentiment = (bool) ($decision->detectedSignals['negative_sentiment'] ?? false);
-
-            if ($negativeSentiment) {
-                $turnLogger->setResponse('negative_sentiment', null);
-                $this->handleNegativeSentiment($lead, $conv, $agent, $message);
-            } else {
-                $turnLogger->setResponse('handoff', null)->setTool('handoff');
-                $this->handleHandoff($lead, $conv, $classifier, $agent, $message);
+        if ($dispatchResult->shouldStop) {
+            if ($dispatchResult->shouldRefreshSummary) {
+                $this->dispatchSummaryRefresh($conv);
             }
-            $this->dispatchSummaryRefresh($conv);
-            return;
-        }
 
-        if ($decisionAction === FinalAction::GuideToBooking || $this->shouldHandleReadyToBook($classifier)) {
-            $turnLogger->setResponse('ready_to_book', null)->setTool('booking_flow');
-            $this->leadStageService->advanceStage($lead, $this->nextStageFromIntent($lead, $classifier));
-            $this->handleReadyToBook($lead, $conv, $agent, $message);
-            $this->dispatchSummaryRefresh($conv);
-            return;
-        }
-
-        if ($this->maybeHandleBookingFieldReply($lead, $classifier, $message, $agent)) {
-            $turnLogger->setResponse('booking_field', null);
-            $this->dispatchSummaryRefresh($conv);
-            return;
-        }
-
-        // Safety net: if TurnDecisionService did not flag handoff but the classifier
-        // still signals needsHandoff (e.g., handoff_reason that the decision service
-        // does not yet classify as handoff-worthy), fall back to legacy handoff path.
-        // This keeps behavior conservative while we migrate more actions.
-        if ($classifier->needsHandoff) {
-            $turnLogger->setResponse('handoff', null)->setTool('handoff');
-            $this->handleHandoff($lead, $conv, $classifier, $agent, $message);
-            $this->dispatchSummaryRefresh($conv);
             return;
         }
 
         $this->leadStageService->advanceStage($lead, $this->nextStageFromIntent($lead, $classifier));
-
-        if ($decisionAction === FinalAction::ReplyWithPackageDetails
-            && $this->shouldSendGroundedPackageAnswer($lead, $conv, $message, $classifier->intent)
-            && $this->dispatchPackageDetailsPayload($lead, $conv, $message, $agent, $classifier->intent, $turnLogger)
-        ) {
-            $this->dispatchSummaryRefresh($conv);
-            return;
-        }
-
-        if ($this->shouldSendGroundedPackageAnswer($lead, $conv, $message, $classifier->intent)) {
-            $reply = $this->queueGroundedPackageReply($lead, $conv, $agent, $message);
-
-            if ($reply !== null) {
-                $turnLogger
-                    ->setResponse('text', $reply)
-                    ->setNextBestAction('respond_to_user')
-                    ->setTool('grounded_package_reply');
-                $this->dispatchSummaryRefresh($conv);
-                return;
-            }
-        }
-
-        if ($this->shouldSendPricelist($lead, $conv, $message, $classifier->intent)) {
-            $turnLogger->setResponse('pricelist', '[pricelist]')->setTool('pricelist_share');
-            $this->handlePricelistInquiry($lead, $conv, $classifier->intent, $agent, $message);
-            $this->dispatchSummaryRefresh($conv);
-            return;
-        }
 
         try {
             $responseText = $this->runResponse($lead, $conv, $classifier->intent);
@@ -823,160 +758,16 @@ class AgentOrchestrator
         }
     }
 
-    private function handleOptOut(Lead $lead, Conversation $conv, WhatsAppAgent $agent, Message $inboundMessage): void
-    {
-        $this->queueAck(
-            $agent,
-            $lead,
-            $conv,
-            'Baik, kami tidak akan menghubungi kamu lagi. Terima kasih ya.',
-            $inboundMessage,
-            0,
-            'handoff_to_human',
-            'automation_paused:opt_out',
-        );
-        $this->leadService->pauseAutomation($lead);
-        $this->handoffRequestService->create($lead, $conv, HandoffReason::Other, 'opt_out');
-    }
-
-    private function handleNegativeSentiment(Lead $lead, Conversation $conv, WhatsAppAgent $agent, Message $inboundMessage): void
-    {
-        $this->queueAck(
-            $agent,
-            $lead,
-            $conv,
-            'Terima kasih sudah menginformasikan. Admin kami akan segera menghubungi kamu secara langsung.',
-            $inboundMessage,
-            0,
-            'handoff_to_human',
-            'handoff_created:negative_sentiment',
-        );
-        $this->leadService->pauseAutomation($lead);
-        $this->handoffRequestService->create($lead, $conv, HandoffReason::NegativeSentiment);
-    }
-
-    private function handleHandoff(Lead $lead, Conversation $conv, ClassifierOutput $c, WhatsAppAgent $agent, Message $inboundMessage): void
-    {
-        $reason = $this->mapHandoffReason($c->handoffReason ?? $c->intent);
-
-        if ($reason === HandoffReason::ReadyToBook) {
-            $this->handleReadyToBook($lead, $conv, $agent, $inboundMessage);
-        } else {
-            $ack = $this->handoffAcknowledgment($reason, $c);
-            if ($ack !== '') {
-                $this->queueAck(
-                    $agent,
-                    $lead,
-                    $conv,
-                    $ack,
-                    $inboundMessage,
-                    0,
-                    'handoff_to_human',
-                    'handoff_created:' . $reason->value,
-                );
-            }
-        }
-
-        $this->handoffRequestService->create($lead, $conv, $reason, $c->handoffReason);
-    }
-
-    private function handleReadyToBook(Lead $lead, Conversation $conversation, WhatsAppAgent $agent, Message $inboundMessage): void
-    {
-        $tenant   = $lead->tenant;
-        $schemaFailureMarker = $this->bookingSchemaFailureMarker($inboundMessage);
-        $state = $conversation->state()->first();
-
-        if (($state?->last_tool_result_summary ?? null) === $schemaFailureMarker) {
-            Log::warning('[AgentOrchestrator] Booking schema failure guard prevented duplicate ready_to_book handling.', [
-                'conversation_id' => $conversation->id,
-                'message_id' => $inboundMessage->id,
-            ]);
-
-            return;
-        }
-
-        try {
-            $template = $this->bookingSchemaService->getActiveSchema($tenant, FormType::Booking);
-        } catch (Throwable $e) {
-            Log::error('[AgentOrchestrator] Booking schema load failed', [
-                'tenant_id' => $lead->tenant_id,
-                'lead_id' => $lead->id,
-                'conversation_id' => $conversation->id,
-                'message_id' => $inboundMessage->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            $this->conversationStateService->recordToolResult(
-                $conversation,
-                $lead,
-                $schemaFailureMarker,
-                'respond_to_user',
-            );
-
-            $this->queueAck(
-                $agent,
-                $lead,
-                $conversation,
-                'Maaf, flow booking lagi aku tahan dulu ya. Aku belum bisa buka form booking saat ini, tapi aku tetap bisa bantu jelaskan detail paket atau lanjutkan pertanyaanmu dulu.',
-                $inboundMessage,
-                0,
-                'respond_to_user',
-                $schemaFailureMarker,
-            );
-
-            return;
-        }
-
-        if (! $template || $template->fields->isEmpty()) {
-            $this->queueAck(
-                $agent,
-                $lead,
-                $conversation,
-                'Siap, aku bantu lanjut ke proses booking ya. Kirim dulu nama lengkap dan tanggal acaranya, nanti aku bantu arahkan step berikutnya.',
-                $inboundMessage,
-                0,
-                'collect_booking_fields',
-                'booking_form_requested',
-            );
-            return;
-        }
-
-        $lines   = ['Siap, kita lanjut ke booking ya. Boleh bantu lengkapi data berikut di chat ini:'];
-        $lines[] = '';
-
-        foreach ($template->fields as $i => $field) {
-            $required = $field->is_required ? ' *' : '';
-            $lines[]  = ($i + 1) . '. ' . $field->label . $required;
-        }
-
-        $lines[] = '';
-        $lines[] = '(* wajib diisi)';
-        $lines[] = '';
-        $lines[] = 'Balas dengan format yang paling nyaman ya, nanti aku bantu rapikan.';
-
-        $this->queueAck(
-            $agent,
-            $lead,
-            $conversation,
-            implode("\n", $lines),
-            $inboundMessage,
-            2,
-            'collect_booking_fields',
-            'booking_form_requested',
-        );
-    }
-
     private function shouldHandleReadyToBook(ClassifierOutput $classifier): bool
     {
         return $classifier->intent === 'ready_to_book'
             || $classifier->handoffReason === 'ready_to_book';
     }
 
-    private function maybeHandleBookingFieldReply(
+    private function isBookingFieldReplyCandidate(
         Lead $lead,
         ClassifierOutput $classifier,
         Message $message,
-        WhatsAppAgent $agent,
     ): bool {
         if (! in_array($lead->status, [LeadStatus::Hot, LeadStatus::ReadyForHuman], true)) {
             return false;
@@ -995,111 +786,7 @@ class AgentOrchestrator
             return false;
         }
 
-        // Delegate decide-how-to-respond + persistence to BookingFieldReplyHandler.
-        // The handler validates the raw value via BookingFieldValidationService before
-        // upserting — invalid values now produce a clarification payload instead of
-        // silently landing in LeadBookingData. BusinessPayloadResponder turns the
-        // payload into the final wording.
-        $payload = $this->bookingFieldReplyHandler->buildPayload(
-            new BookingFieldReplyHandlerInput(
-                lead: $lead,
-                conversation: $message->conversation,
-                message: $message,
-                formType: FormType::Booking,
-            ),
-        );
-
-        if ($payload === null) {
-            return false;
-        }
-
-        $rendered = $this->businessPayloadResponder->render($payload);
-        $replyText = (string) ($rendered->text ?? '');
-
-        if ($replyText === '') {
-            return false;
-        }
-
-        $this->queueAck(
-            $agent,
-            $lead,
-            $message->conversation,
-            $replyText,
-            $message,
-            0,
-            $rendered->nextBestAction,
-            $rendered->toolResultSummary,
-        );
-
-        Log::info('[AgentOrchestrator] Stored booking field reply', [
-            'lead_id' => $lead->id,
-            'payload_type' => $payload->payloadType,
-            'saved_field' => $payload->data['saved_field']['key'] ?? null,
-            'invalid_field' => $payload->data['invalid_field']['key'] ?? null,
-            'next_field' => $payload->data['next_field']['key'] ?? null,
-        ]);
-
         return true;
-    }
-
-    private function handoffAcknowledgment(HandoffReason $reason, ClassifierOutput $c): string
-    {
-        return match ($reason) {
-            HandoffReason::AvailabilityCheck => 'Untuk mengecek ketersediaan tanggal tersebut, kami perlu konfirmasi langsung dengan tim. Admin kami akan segera membalasmu ya.',
-            HandoffReason::CustomPackage     => 'Terima kasih sudah menginformasikan kebutuhanmu. Admin kami akan menghubungi untuk mendiskusikan paket custom yang sesuai.',
-            HandoffReason::PaymentProof      => 'Terima kasih, bukti pembayarannya sudah kami terima. Admin akan mengkonfirmasi dalam waktu dekat ya.',
-            HandoffReason::Complaint         => 'Kami mohon maaf atas ketidaknyamanannya. Admin kami akan segera menghubungi kamu untuk menyelesaikan masalah ini.',
-            default                          => 'Pesan kamu sudah kami terima. Tim kami akan segera menghubungi kamu ya.',
-        };
-    }
-
-    private function queueAck(
-        WhatsAppAgent $agent,
-        Lead $lead,
-        Conversation $conversation,
-        string $message,
-        Message $inboundMessage,
-        int $extraDelay = 0,
-        ?string $nextBestAction = null,
-        ?string $toolResultSummary = null,
-    ): void
-    {
-        $message = $this->humanizerService->humanize($message, $lead, $conversation, $inboundMessage);
-        $delay = $this->delayPolicyService->getDelay($message) + $extraDelay;
-
-        $this->outboundDispatchService->queueSend(
-            agent:          $agent,
-            to:             $lead->preferredWhatsAppRecipient(),
-            content:        $message,
-            queue:          'high',
-            delaySeconds:   $delay,
-            idempotencyKey: $this->buildOutboundIdempotencyKey(
-                $conversation,
-                $inboundMessage,
-                $message,
-                $toolResultSummary,
-            ),
-        );
-        $this->conversationStateService->recordOutboundMessage(
-            $conversation,
-            $lead,
-            $message,
-            $nextBestAction,
-            $toolResultSummary,
-        );
-    }
-
-    private function mapHandoffReason(?string $reason): HandoffReason
-    {
-        return match ($reason) {
-            'availability', 'availability_check'   => HandoffReason::AvailabilityCheck,
-            'custom_package'                       => HandoffReason::CustomPackage,
-            'ready_to_book'                        => HandoffReason::ReadyToBook,
-            'payment_proof'                        => HandoffReason::PaymentProof,
-            'complaint'                            => HandoffReason::Complaint,
-            'negative_sentiment'                   => HandoffReason::NegativeSentiment,
-            default                                => HandoffReason::Other,
-        };
     }
 
     private function nextStageFromIntent(Lead $lead, ClassifierOutput $c): LeadStatus
@@ -1476,170 +1163,6 @@ class AgentOrchestrator
         ], $context));
     }
 
-    private function handlePricelistInquiry(Lead $lead, Conversation $conv, string $intent, WhatsAppAgent $agent, Message $inboundMessage): void
-    {
-        $path = $this->pricelistService->findLatestPdf($lead->tenant);
-        if (! $path) {
-            Log::warning('[AgentOrchestrator] Pricelist not found for tenant', [
-                'tenant_id' => $lead->tenant_id,
-                'lead_id' => $lead->id,
-                'conversation_id' => $conv->id,
-            ]);
-
-            $this->createPricelistMissingHandoff($lead, $conv);
-
-            $missingText = $this->humanizerService->humanize(
-                'Saat ini pricelist PDF belum tersedia di sistem kami. Admin kami akan lanjut membantu dan segera mengirimkan detail harga ya.',
-                $lead,
-                $conv,
-                $inboundMessage,
-            );
-            $this->outboundDispatchService->queueSend(
-                agent: $agent,
-                to: $lead->preferredWhatsAppRecipient(),
-                content: $missingText,
-                queue: 'high',
-                delaySeconds: 2,
-                idempotencyKey: $this->buildOutboundIdempotencyKey($conv, $inboundMessage, $missingText, 'pricelist_missing'),
-            );
-            $this->conversationStateService->recordOutboundMessage(
-                $conv,
-                $lead,
-                $missingText,
-                'handoff_to_human',
-                'pricelist_missing',
-            );
-
-            return;
-        }
-
-        try {
-            Log::info('[AgentOrchestrator] Pricelist found, queueing document send', [
-                'tenant_id' => $lead->tenant_id,
-                'lead_id' => $lead->id,
-                'conversation_id' => $conv->id,
-                'path' => $path,
-            ]);
-
-            $followUpText = $this->humanizerService->humanize(
-                $this->defaultPricelistFollowUpMessage($intent),
-                $lead,
-                $conv,
-                $inboundMessage,
-            );
-            $delay = $this->delayPolicyService->getDelay($followUpText);
-
-            $this->outboundDispatchService->queueSendDocument(
-                agent: $agent,
-                to: $lead->preferredWhatsAppRecipient(),
-                filePath: $this->pricelistService->absolutePath($path),
-                filename: $this->pricelistService->filename($path) ?? 'pricelist.pdf',
-                idempotencyKey: $this->buildOutboundIdempotencyKey($conv, $inboundMessage, 'pricelist_pdf', 'pricelist_document'),
-                caption: 'Pricelist terbaru kami',
-                followUpText: $followUpText,
-                followUpDelaySeconds: $delay,
-                queue: 'high',
-            );
-            $this->conversationStateService->recordOutboundMessage(
-                $conv,
-                $lead,
-                $followUpText,
-                'share_pricelist',
-                'pricelist_pdf_queued',
-            );
-        } catch (Throwable $e) {
-            Log::error('[AgentOrchestrator] Pricelist dispatch failed', [
-                'tenant_id' => $lead->tenant_id,
-                'lead_id' => $lead->id,
-                'agent_id' => $agent->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            $this->createPricelistMissingHandoff($lead, $conv);
-
-            $dispatchFailureText = $this->humanizerService->humanize(
-                'Pricelist sedang gagal kami kirim otomatis. Admin kami akan lanjut bantu kirimkan detail harga ya.',
-                $lead,
-                $conv,
-                $inboundMessage,
-            );
-
-            $this->outboundDispatchService->queueSend(
-                agent: $agent,
-                to: $lead->preferredWhatsAppRecipient(),
-                content: $dispatchFailureText,
-                queue: 'high',
-                delaySeconds: 2,
-                idempotencyKey: $this->buildOutboundIdempotencyKey($conv, $inboundMessage, $dispatchFailureText, 'pricelist_dispatch_failed'),
-            );
-            $this->conversationStateService->recordOutboundMessage(
-                $conv,
-                $lead,
-                $dispatchFailureText,
-                'handoff_to_human',
-                'pricelist_dispatch_failed',
-            );
-
-            return;
-        }
-
-        Log::info('[AgentOrchestrator] Pricelist follow-up queued', [
-            'tenant_id' => $lead->tenant_id,
-            'lead_id' => $lead->id,
-            'conversation_id' => $conv->id,
-            'intent' => $intent,
-        ]);
-    }
-
-    private function shouldSendPricelist(Lead $lead, Conversation $conversation, Message $message, string $intent): bool
-    {
-        if ($this->prefersTextPricingExplanation($message, $conversation)) {
-            return false;
-        }
-
-        if ($this->isDirectPricelistInquiry($message, $conversation)) {
-            return true;
-        }
-
-        if (! $this->canAutoSendPricelistForStage($conversation)) {
-            return false;
-        }
-
-        $snapshot = $this->leadMemoryService->getSnapshot($lead);
-        if ($this->conversationStageService->missingRecommendationFields($conversation, $snapshot) !== []) {
-            return false;
-        }
-
-        return $this->isAffirmingRecentPricelistOffer($message, $conversation)
-            && in_array($intent, ['tanya_harga', 'tanya_paket', 'bandingkan_paket'], true);
-    }
-
-    private function shouldSendGroundedPackageAnswer(
-        Lead $lead,
-        Conversation $conversation,
-        Message $message,
-        string $intent,
-    ): bool {
-        if (! in_array($intent, ['tanya_paket', 'bandingkan_paket'], true)) {
-            return false;
-        }
-
-        if (! $this->canGroundPackageAnswerForStage($conversation)) {
-            return false;
-        }
-
-        if (! $this->isDirectPackageInquiry($message) && ! $this->isShortPackageContinuation($message, $conversation)) {
-            return false;
-        }
-
-        $snapshot = $this->leadMemoryService->getSnapshot($lead);
-        if ($this->conversationStageService->missingRecommendationFields($conversation, $snapshot) !== []) {
-            return false;
-        }
-
-        return $this->resolveGroundedPackageItems($lead, $conversation)->isNotEmpty();
-    }
-
     private function canAutoSendPricelistForStage(Conversation $conversation): bool
     {
         return in_array($conversation->stageEnum(), [
@@ -1661,7 +1184,7 @@ class AgentOrchestrator
         ], true);
     }
 
-    private function isDirectPricelistInquiry(Message $message, ?Conversation $conversation = null): bool
+    private function matchesDirectPricelistShortcut(Message $message, ?Conversation $conversation = null): bool
     {
         $content = strtolower(trim((string) $message->content));
 
@@ -1682,7 +1205,7 @@ class AgentOrchestrator
                 || $this->isAffirmingRecentPricelistOffer($message, $conversation));
     }
 
-    private function isDirectPackageInquiry(Message $message): bool
+    private function detectDirectPackageSignal(Message $message): bool
     {
         $content = mb_strtolower(trim((string) $message->content));
 
@@ -2171,56 +1694,6 @@ class AgentOrchestrator
             || str_contains($message, 'openai');
     }
 
-    /**
-     * @param  array<string, mixed>  $context
-     */
-    private function dispatchPackageDetailsPayload(
-        Lead $lead,
-        Conversation $conv,
-        Message $message,
-        WhatsAppAgent $agent,
-        string $intent,
-        ConversationTurnLogger $turnLogger,
-    ): bool {
-        $payload = $this->packageDetailsInquiryHandler->buildPayload(
-            new PackageDetailsHandlerInput(
-                lead: $lead,
-                conversation: $conv,
-                message: $message,
-                intent: $intent,
-            ),
-        );
-
-        if ($payload === null) {
-            return false;
-        }
-
-        $rendered = $this->businessPayloadResponder->render($payload);
-        $replyText = (string) ($rendered->text ?? '');
-
-        if ($replyText === '') {
-            return false;
-        }
-
-        $this->queueAck(
-            $agent,
-            $lead,
-            $conv,
-            $replyText,
-            $message,
-            0,
-            $rendered->nextBestAction,
-            $rendered->toolResultSummary,
-        );
-
-        $turnLogger
-            ->setResponse('text', $replyText)
-            ->setNextBestAction($rendered->nextBestAction)
-            ->setTool('grounded_package_reply');
-
-        return true;
-    }
-
     private function decideTurn(
         Lead $lead,
         Conversation $conv,
@@ -2244,10 +1717,24 @@ class AgentOrchestrator
             nextBestAction: $state?->next_best_action,
         );
 
+        $leadSnapshot = $this->leadMemoryService->getSnapshot($lead);
+        $missingRecommendationFields = $this->conversationStageService->missingRecommendationFields($conv, $leadSnapshot) !== [];
+
         $businessFlags = [
             'handoff_required' => $classifier->needsHandoff,
             'handoff_reason' => $classifier->handoffReason,
             'negative_sentiment' => $classifier->sentiment === 'negative' && $classifier->confidence >= 0.8,
+            'contains_direct_pricelist_keywords' => $this->containsDirectPricelistKeywords((string) $message->content),
+            'pricelist_document_follow_up' => $this->isPricelistDocumentFollowUp($message, $conv),
+            'affirming_recent_pricelist_offer' => $this->isAffirmingRecentPricelistOffer($message, $conv),
+            'prefers_text_pricing_explanation' => $this->prefersTextPricingExplanation($message, $conv),
+            'can_auto_send_pricelist' => $this->canAutoSendPricelistForStage($conv),
+            'direct_package_inquiry' => $this->detectDirectPackageSignal($message),
+            'short_package_continuation' => $this->isShortPackageContinuation($message, $conv),
+            'can_send_grounded_package' => $this->canGroundPackageAnswerForStage($conv),
+            'grounded_package_items_available' => $this->resolveGroundedPackageItems($lead, $conv)->isNotEmpty(),
+            'missing_recommendation_fields' => $missingRecommendationFields,
+            'booking_field_reply_candidate' => $this->isBookingFieldReplyCandidate($lead, $classifier, $message),
         ];
 
         $input = new TurnDecisionInput(
@@ -2286,25 +1773,6 @@ class AgentOrchestrator
         AgentLog::warning('turn.no_reply_exit', $payload);
     }
 
-    private function createPricelistMissingHandoff(Lead $lead, Conversation $conv): void
-    {
-        $alreadyPending = $conv->handoffRequests()
-            ->pending()
-            ->exists();
-
-        if ($alreadyPending) {
-            return;
-        }
-
-        $this->handoffRequestService->create(
-            $lead,
-            $conv,
-            HandoffReason::Other,
-            'pricelist_missing',
-            'Lead meminta harga/paket tetapi tenant belum memiliki file pricelist PDF aktif di folder pricelist.',
-        );
-    }
-
     private function createQualityFilterHandoffIfNeeded(
         Lead $lead,
         Conversation $conv,
@@ -2326,15 +1794,6 @@ class AgentOrchestrator
             $detail,
             $summaryForAdmin !== '' ? $summaryForAdmin : null,
         );
-    }
-
-    private function defaultPricelistFollowUpMessage(string $intent): string
-    {
-        return match ($intent) {
-            'bandingkan_paket' => 'Pricelist PDF-nya sudah aku kirim ya. Kalau kamu mau, aku bantu lihat paket mana yang paling pas buat kebutuhanmu.',
-            'tanya_harga', 'tanya_paket' => 'Pricelist PDF-nya sudah aku kirim ya. Kalau mau, aku bantu arahin paket yang paling cocok buat acara kamu.',
-            default => 'Pricelist PDF-nya sudah aku kirim ya. Kalau ada yang ingin dibahas, aku bantu jelaskan yang paling relevan buat kamu.',
-        };
     }
 
     private function retryEmptyResponse(
@@ -2979,11 +2438,6 @@ class AgentOrchestrator
         return str_contains($content, 'booking')
             && $this->containsAnyFragment($content, ['kenapa', 'kok', 'katanya', 'bukannya'])
             && $this->containsAnyFragment($lastAgentContext, ['jelaskan', 'jelasin', 'detail paket', 'lebih lanjut']);
-    }
-
-    private function bookingSchemaFailureMarker(Message $message): string
-    {
-        return 'booking_schema_error:message:' . $message->id;
     }
 
     private function containsStandaloneKeyword(string $haystack, string $keyword): bool

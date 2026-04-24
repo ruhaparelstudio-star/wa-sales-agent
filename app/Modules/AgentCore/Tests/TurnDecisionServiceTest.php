@@ -5,6 +5,7 @@ use App\Modules\AgentCore\DTOs\InterpretationResult;
 use App\Modules\AgentCore\DTOs\SharedConversationContext;
 use App\Modules\AgentCore\DTOs\TurnDecisionInput;
 use App\Modules\AgentCore\Enums\FinalAction;
+use App\Modules\AgentCore\Enums\ResponseMode;
 use App\Modules\AgentCore\Services\TurnDecisionService;
 use App\Modules\Conversations\Enums\ConversationStage;
 
@@ -228,4 +229,90 @@ test('opt_out intent resolves to ReplyWithOptOut action, not generic handoff', f
     expect($decision->finalDecision['action'])->toBe(FinalAction::ReplyWithOptOut)
         ->and($decision->finalDecision['requires_handoff'])->toBeTrue()
         ->and($decision->finalDecision['stage_after'])->toBe(ConversationStage::HandoffToHuman->value);
+});
+
+test('turn decision service selects ReplyWithPricelist from direct-pricelist signals', function () {
+    $decision = (new TurnDecisionService())->decide(makeTurnDecisionInput([
+        'ruleInterpretation' => new InterpretationResult(
+            canonicalIntent: 'price_inquiry',
+            legacyIntent: 'tanya_harga',
+            slots: [],
+            confidence: 0.95,
+            source: 'rules',
+        ),
+        'classifierResult' => new ClassifierOutput(
+            intent: 'tanya_harga',
+            sentiment: 'neutral',
+            extractedFields: [],
+            needsHandoff: false,
+            handoffReason: null,
+            confidence: 0.94,
+            currentStage: ConversationStage::PackageRecommendation,
+            suggestedNextStage: ConversationStage::PackageRecommendation,
+            missingCriticalFields: [],
+        ),
+        'currentStage' => ConversationStage::PackageRecommendation,
+        'context' => makeSharedDecisionContext(ConversationStage::PackageRecommendation->value),
+        'businessFlags' => [
+            'contains_direct_pricelist_keywords' => true,
+            'prefers_text_pricing_explanation' => false,
+            'can_auto_send_pricelist' => true,
+            'missing_recommendation_fields' => false,
+        ],
+    ]));
+
+    expect($decision->finalDecision['action'])->toBe(FinalAction::ReplyWithPricelist)
+        ->and($decision->finalDecision['response_mode'])->toBe(ResponseMode::BusinessPayloadToResponder)
+        ->and($decision->detectedSignals['should_send_pricelist'])->toBeTrue();
+});
+
+test('turn decision service selects ReplyWithGroundedPackage from package-context signals', function () {
+    $decision = (new TurnDecisionService())->decide(makeTurnDecisionInput([
+        'context' => makeSharedDecisionContext(ConversationStage::PackageRecommendation->value),
+        'currentStage' => ConversationStage::PackageRecommendation,
+        'businessFlags' => [
+            'direct_package_inquiry' => true,
+            'can_send_grounded_package' => true,
+            'grounded_package_items_available' => true,
+            'missing_recommendation_fields' => false,
+        ],
+    ]));
+
+    expect($decision->finalDecision['action'])->toBe(FinalAction::ReplyWithGroundedPackage)
+        ->and($decision->finalDecision['response_mode'])->toBe(ResponseMode::BusinessPayloadToResponder)
+        ->and($decision->detectedSignals['should_send_grounded_package'])->toBeTrue();
+});
+
+test('turn decision service suppresses pricelist send when user prefers chat explanation', function () {
+    $decision = (new TurnDecisionService())->decide(makeTurnDecisionInput([
+        'ruleInterpretation' => new InterpretationResult(
+            canonicalIntent: 'price_inquiry',
+            legacyIntent: 'tanya_harga',
+            slots: [],
+            confidence: 0.95,
+            source: 'rules',
+        ),
+        'classifierResult' => new ClassifierOutput(
+            intent: 'tanya_harga',
+            sentiment: 'neutral',
+            extractedFields: [],
+            needsHandoff: false,
+            handoffReason: null,
+            confidence: 0.94,
+            currentStage: ConversationStage::PackageRecommendation,
+            suggestedNextStage: ConversationStage::PackageRecommendation,
+            missingCriticalFields: [],
+        ),
+        'currentStage' => ConversationStage::PackageRecommendation,
+        'context' => makeSharedDecisionContext(ConversationStage::PackageRecommendation->value),
+        'businessFlags' => [
+            'contains_direct_pricelist_keywords' => true,
+            'prefers_text_pricing_explanation' => true,
+            'can_auto_send_pricelist' => true,
+            'missing_recommendation_fields' => false,
+        ],
+    ]));
+
+    expect($decision->finalDecision['action'])->toBe(FinalAction::ReplyWithPriceDetails)
+        ->and($decision->detectedSignals['should_send_pricelist'])->toBeFalse();
 });

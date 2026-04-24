@@ -43,6 +43,11 @@ function buildStructuredPayloadOrchestrator(LlmClientInterface $llm): AgentOrche
 {
     foreach ([
         AgentOrchestrator::class,
+        \App\Modules\AgentCore\Dispatch\ActionDispatcher::class,
+        BookingFieldReplyHandler::class,
+        PackageDetailsInquiryHandler::class,
+        PricelistInquiryHandler::class,
+        BusinessPayloadResponder::class,
         ContextAwareFallbackBuilder::class,
         FallbackGuardService::class,
         QualityFilterService::class,
@@ -96,7 +101,7 @@ test('pricelist inquiry handler returns structured payload and responder renders
     $rendered = app(BusinessPayloadResponder::class)->render($payload);
 
     expect($payload->toArray()['payload_type'])->toBe('pricelist_info')
-        ->and($payload->toArray()['action'])->toBe('reply_with_price_details')
+        ->and($payload->toArray()['action'])->toBe('reply_with_pricelist')
         ->and($payload->data['delivery_status'])->toBe('ready_to_send')
         ->and($payload->data['pricelist_available'])->toBeTrue()
         ->and($payload->data['next_best_action'])->toBe('share_pricelist')
@@ -146,7 +151,7 @@ test('package details handler returns enough structured facts and responder rend
 
     expect($payload)->not->toBeNull()
         ->and($payload?->toArray()['payload_type'])->toBe('package_details')
-        ->and($payload?->toArray()['action'])->toBe('reply_with_package_details')
+        ->and($payload?->toArray()['action'])->toBe('reply_with_grounded_package')
         ->and($payload?->data['presentation_mode'])->toBe('structured_variants')
         ->and($payload?->data['scope'])->toBe('paket wedding')
         ->and($payload?->data['next_best_action'])->toBe('respond_to_user')
