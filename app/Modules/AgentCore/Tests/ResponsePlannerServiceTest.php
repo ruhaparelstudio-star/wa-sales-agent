@@ -8,6 +8,9 @@ use App\Modules\Booking\Services\LeadBookingDataService;
 use App\Modules\Conversations\Enums\ConversationStage;
 use App\Modules\Conversations\Models\Conversation;
 use App\Modules\Conversations\Models\ConversationState;
+use App\Modules\Conversations\Services\ConversationStateService;
+use App\Modules\Conversations\Services\ConversationStageService;
+use App\Modules\Conversations\Actions\TransitionConversationStageAction;
 use App\Modules\Leads\Models\Lead;
 use App\Modules\Leads\Services\LeadMemoryService;
 use App\Modules\Tenancy\Models\Tenant;
@@ -16,14 +19,21 @@ function makeResponsePlanner(): ResponsePlannerService
 {
     $leadMemoryService = new LeadMemoryService();
     $bookingDataService = new LeadBookingDataService();
+    $stageService = new ConversationStageService(new TransitionConversationStageAction());
     $closingPolicyService = new ClosingPolicyService(
         $leadMemoryService,
         $bookingDataService,
         new LeadReadinessScorer(),
         new CtaSuggestionService(),
     );
+    $conversationStateService = new ConversationStateService(
+        $leadMemoryService,
+        $bookingDataService,
+        $stageService,
+        $closingPolicyService,
+    );
 
-    return new ResponsePlannerService($closingPolicyService);
+    return new ResponsePlannerService($closingPolicyService, $conversationStateService);
 }
 
 test('response planner prioritizes explicit pricing focus before anything else', function () {

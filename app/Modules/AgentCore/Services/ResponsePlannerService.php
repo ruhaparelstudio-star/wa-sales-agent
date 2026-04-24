@@ -4,12 +4,14 @@ namespace App\Modules\AgentCore\Services;
 
 use App\Modules\Conversations\Enums\ConversationStage;
 use App\Modules\Conversations\Models\Conversation;
+use App\Modules\Conversations\Services\ConversationStateService;
 use App\Modules\Leads\Models\Lead;
 
 class ResponsePlannerService
 {
     public function __construct(
         private readonly ClosingPolicyService $closingPolicyService,
+        private readonly ConversationStateService $conversationStateService,
     ) {}
 
     /**
@@ -31,7 +33,10 @@ class ResponsePlannerService
         $state = $conversation->state()->first();
         $filledSlots = is_array($state?->filled_slots) ? $state->filled_slots : [];
         $currentIntent = (string) ($state?->current_intent ?? 'unclear');
-        $nextBestAction = (string) ($state?->next_best_action ?? 'respond_to_user');
+        $nextBestAction = trim((string) ($state?->next_best_action ?? ''));
+        if ($nextBestAction === '') {
+            $nextBestAction = $this->conversationStateService->previewNextBestAction($conversation, $lead);
+        }
         $lastUserMessage = mb_strtolower(trim((string) ($state?->last_user_message ?? '')));
         $pricingFocus = $this->stringOrNull($filledSlots['pricing_focus'] ?? null);
         $packageInterest = $this->stringOrNull($filledSlots['package_interest'] ?? null);

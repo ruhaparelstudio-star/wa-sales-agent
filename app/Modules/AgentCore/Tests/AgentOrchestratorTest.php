@@ -95,6 +95,12 @@ function buildOrchestrator(LlmClientInterface $llm, ?BookingSchemaService $booki
         $closingPolicyService,
     );
     $fallbackGuardService = new FallbackGuardService($contextAwareFallbackBuilder);
+    $conversationStateService = new ConversationStateService(
+        $leadMemoryService,
+        $bookingDataService,
+        $stageService,
+        $closingPolicyService,
+    );
 
     $contextAssembler = new ContextAssembler(
         new PromptBuilder(),
@@ -104,14 +110,9 @@ function buildOrchestrator(LlmClientInterface $llm, ?BookingSchemaService $booki
         $summaryService,
         $bookingDataService,
         $stageService,
-        new ConversationStateService(
-            $leadMemoryService,
-            $bookingDataService,
-            $stageService,
-            $closingPolicyService,
-        ),
+        $conversationStateService,
         $closingPolicyService,
-        new ResponsePlannerService($closingPolicyService),
+        new ResponsePlannerService($closingPolicyService, $conversationStateService),
     );
 
     $subService  = new SubscriptionService();
@@ -155,12 +156,7 @@ function buildOrchestrator(LlmClientInterface $llm, ?BookingSchemaService $booki
         new KnowledgeRetrievalService(),
         $stageService,
         new RecordAskedFieldAction(),
-        new ConversationStateService(
-            $leadMemoryService,
-            $bookingDataService,
-            $stageService,
-            $closingPolicyService,
-        ),
+        $conversationStateService,
         new ConversationInterpretationService(
             new IntentExtractionService(),
             new SlotExtractionService(),

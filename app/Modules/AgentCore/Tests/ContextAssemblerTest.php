@@ -41,6 +41,12 @@ function makeContextAssembler(): ContextAssembler
         new LeadReadinessScorer(),
         new CtaSuggestionService(),
     );
+    $conversationStateService = new ConversationStateService(
+        $leadMemoryService,
+        $bookingDataService,
+        $stageService,
+        $closingPolicyService,
+    );
 
     return new ContextAssembler(
         new PromptBuilder(),
@@ -50,14 +56,9 @@ function makeContextAssembler(): ContextAssembler
         new ConversationSummaryService(),
         $bookingDataService,
         $stageService,
-        new ConversationStateService(
-            $leadMemoryService,
-            $bookingDataService,
-            $stageService,
-            $closingPolicyService,
-        ),
+        $conversationStateService,
         $closingPolicyService,
-        new ResponsePlannerService($closingPolicyService),
+        new ResponsePlannerService($closingPolicyService, $conversationStateService),
     );
 }
 

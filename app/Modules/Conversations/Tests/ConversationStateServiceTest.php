@@ -104,6 +104,7 @@ test('applyInterpretationResult stores canonical intent, slots, and confidence',
     );
 
     $state = makeConversationStateService()->applyInterpretationResult($conv, $lead->fresh(), $interpretation, $classifier);
+    $preview = makeConversationStateService()->previewNextBestAction($conv->fresh(), $lead->fresh());
 
     expect($state->current_intent)->toBe('package_inquiry')
         ->and($state->intent_confidence)->toBe(0.91)
@@ -117,7 +118,8 @@ test('applyInterpretationResult stores canonical intent, slots, and confidence',
         ->and($state->filled_slots['pricing_focus'])->toBe('package_only')
         ->and($state->unresolved_questions)->not->toContain('service_type')
         ->and($state->unresolved_questions)->toContain('budget')
-        ->and($state->next_best_action)->toBe('ask_location');
+        ->and($state->next_best_action)->toBeNull()
+        ->and($preview)->toBe('ask_location');
 });
 
 test('payment inquiry keeps next best action in closing flow instead of regressing to discovery', function () {
@@ -165,8 +167,10 @@ test('payment inquiry keeps next best action in closing flow instead of regressi
     );
 
     $state = makeConversationStateService()->applyInterpretationResult($conv, $lead->fresh(), $interpretation, $classifier);
+    $preview = makeConversationStateService()->previewNextBestAction($conv->fresh(), $lead->fresh());
 
-    expect($state->next_best_action)->toStartWith('answer_payment_then_')
+    expect($state->next_best_action)->toBeNull()
+        ->and($preview)->toStartWith('answer_payment_then_')
         ->and($state->lead_temperature)->toBe('warm');
 });
 
@@ -277,8 +281,10 @@ test('pricing intent asks for missing client basics before recommending packages
     );
 
     $state = makeConversationStateService()->applyInterpretationResult($conv, $lead->fresh(), $interpretation, $classifier);
+    $preview = makeConversationStateService()->previewNextBestAction($conv->fresh(), $lead->fresh());
 
-    expect($state->next_best_action)->toBe('ask_guest_count');
+    expect($state->next_best_action)->toBeNull()
+        ->and($preview)->toBe('ask_guest_count');
 });
 
 test('last_answered_topic is preserved on inbound interpretation and updated from real outbound reply', function () {
@@ -464,4 +470,72 @@ test('critical slots are rehydrated from lead memory snapshot into filled slots'
         ->and($state->filled_slots['payment_topic'])->toBe('down_payment')
         ->and($state->filled_slots['event_time_start'])->toBe('10:00')
         ->and($state->filled_slots['event_time_end'])->toBe('12:00');
+});
+
+test('toContextBlock previews next_best_action while inbound turn state is still in flight', function () {
+    $tenant = Tenant::factory()->create();
+    $lead   = Lead::factory()->interested()->create(['tenant_id' => $tenant->id]);
+    $conv   = Conversation::factory()->atStage(ConversationStage::Qualification)->create([
+        'tenant_id' => $tenant->id,
+        'lead_id' => $lead->id,
+    ]);
+
+    app(LeadMemoryService::class)->upsert($lead, [
+        'service_type' => 'wedding',
+        'event_date' => '2026-12-12',
+    ]);
+
+    $classifier = new ClassifierOutput(
+        intent: 'tanya_harga',
+        sentiment: 'neutral',
+        extractedFields: [],
+        needsHandoff: false,
+        handoffReason: null,
+        confidence: 0.9,
+        currentStage: ConversationStage::Qualification,
+        suggestedNextStage: ConversationStage::Qualification,
+        missingCriticalFields: ['location'],
+    );
+
+    $interpretation = new InterpretationResult(
+        canonicalIntent: 'price_inquiry',
+        legacyIntent: 'tanya_harga',
+        slots: ['pricing_focus' => 'price_only'],
+        confidence: 0.9,
+        source: 'rules+llm',
+    );
+
+    makeConversationStateService()->applyInterpretationResult($conv->fresh(), $lead->fresh(), $interpretation, $classifier);
+
+    $state = $conv->fresh()->state()->first();
+    $block = makeConversationStateService()->toContextBlock($conv->fresh(), $lead->fresh());
+
+    expect($state?->next_best_action)->toBeNull()
+        ->and($block)->toContain('next_best_action: ask_location');
+});
+
+test('recordToolResult leaves next_best_action untouched until outbound state is committed', function () {
+    $tenant = Tenant::factory()->create();
+    $lead   = Lead::factory()->create(['tenant_id' => $tenant->id]);
+    $conv   = Conversation::factory()->atStage(ConversationStage::Qualification)->create([
+        'tenant_id' => $tenant->id,
+        'lead_id' => $lead->id,
+    ]);
+
+    ConversationState::factory()->create([
+        'tenant_id' => $tenant->id,
+        'conversation_id' => $conv->id,
+        'lead_id' => $lead->id,
+        'next_best_action' => null,
+    ]);
+
+    $state = makeConversationStateService()->recordToolResult(
+        $conv->fresh(),
+        $lead->fresh(),
+        'booking_schema_error:message:123',
+        'respond_to_user',
+    );
+
+    expect($state->last_tool_result_summary)->toBe('booking_schema_error:message:123')
+        ->and($state->next_best_action)->toBeNull();
 });

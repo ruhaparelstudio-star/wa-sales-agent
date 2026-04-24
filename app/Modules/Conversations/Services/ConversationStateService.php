@@ -36,7 +36,6 @@ class ConversationStateService
                 'lead_temperature' => $this->resolveLeadTemperature($lead),
                 'filled_slots' => $this->resolveFilledSlots($lead),
                 'unresolved_questions' => $this->resolveUnresolvedQuestions($conversation, $lead),
-                'next_best_action' => $this->resolveNextBestAction($conversation, $lead),
             ],
         );
 
@@ -80,7 +79,9 @@ class ConversationStateService
             'lead_temperature' => $this->resolveLeadTemperature($lead),
             'filled_slots' => $this->resolveFilledSlots($lead, $state, $interpretation->slots),
             'unresolved_questions' => $unresolved,
-            'next_best_action' => $this->resolveNextBestAction($conversation, $lead, $classifier, $unresolved, $interpretation),
+            // next_best_action is previewed live during the turn and persisted once
+            // from recordOutboundMessage after the final reply/tool outcome is known.
+            'next_best_action' => null,
         ];
 
         if ($answeredAskedField !== null) {
@@ -112,7 +113,7 @@ class ConversationStateService
             'lead_temperature' => $this->resolveLeadTemperature($lead),
             'filled_slots' => $this->resolveFilledSlots($lead, $state, $this->mapClassifierFieldsToSlots($classifier->extractedFields)),
             'unresolved_questions' => $unresolved,
-            'next_best_action' => $this->resolveNextBestAction($conversation, $lead, $classifier, $unresolved),
+            'next_best_action' => null,
         ]);
         $this->syncConversationCollectionMetadata($conversation, $lead);
 
@@ -158,7 +159,7 @@ class ConversationStateService
                 $toolResultSummary,
                 $state,
             ),
-            'next_best_action' => $nextBestAction ?? $this->resolveNextBestAction($conversation, $lead),
+            'next_best_action' => $nextBestAction ?? $this->resolveNextBestAction($conversation, $lead, $state),
         ];
 
         if ($toolResultSummary !== null && trim($toolResultSummary) !== '') {
@@ -180,15 +181,22 @@ class ConversationStateService
 
         $state->update([
             'last_tool_result_summary' => $summary,
-            'next_best_action' => $nextBestAction ?? $this->resolveNextBestAction($conversation, $lead),
         ]);
 
         return $state->fresh();
     }
 
+    public function previewNextBestAction(Conversation $conversation, Lead $lead): string
+    {
+        $state = $this->loadOrCreate($conversation, $lead);
+
+        return $this->resolveNextBestAction($conversation, $lead, $state);
+    }
+
     public function toContextBlock(Conversation $conversation, Lead $lead): string
     {
         $state = $this->loadOrCreate($conversation, $lead);
+        $nextBestAction = $state->next_best_action ?? $this->resolveNextBestAction($conversation, $lead, $state);
 
         $filled = collect($state->filled_slots ?? [])
             ->map(function (mixed $value, string $key): string {
@@ -209,7 +217,7 @@ class ConversationStateService
             . "- unresolved_questions: {$unresolvedList}\n"
             . "- last_agent_question: " . ($state->last_agent_question ?? '(none)') . "\n"
             . "- last_answered_topic: " . ($state->last_answered_topic ?? '(none)') . "\n"
-            . "- next_best_action: " . ($state->next_best_action ?? '(none)') . "\n"
+            . "- next_best_action: " . ($nextBestAction !== '' ? $nextBestAction : '(none)') . "\n"
             . "- last_tool_result_summary: " . ($state->last_tool_result_summary ?? '(none)');
     }
 
@@ -459,6 +467,7 @@ class ConversationStateService
     private function resolveNextBestAction(
         Conversation $conversation,
         Lead $lead,
+        ?ConversationState $state = null,
         ?ClassifierOutput $classifier = null,
         ?array $unresolved = null,
         ?InterpretationResult $interpretation = null,
@@ -467,7 +476,13 @@ class ConversationStateService
             return 'handoff_to_human';
         }
 
-        $unresolved ??= $this->resolveUnresolvedQuestions($conversation, $lead, $classifier);
+        $state ??= $conversation->state()->first();
+        $currentIntent = $interpretation?->canonicalIntent
+            ?? $state?->current_intent
+            ?? $this->canonicalIntentForState($classifier?->intent, 'unclear');
+        $unresolved ??= is_array($state?->unresolved_questions)
+            ? $state->unresolved_questions
+            : $this->resolveUnresolvedQuestions($conversation, $lead, $classifier);
 
         $closingPolicy = $this->closingPolicyService->resolve(
             $conversation,
@@ -485,18 +500,24 @@ class ConversationStateService
             return $closingPolicy['next_best_action'];
         }
 
+        $nextBookingField = $this->leadBookingDataService->nextMissingRequiredField($lead, FormType::Booking);
+
+        if ($currentIntent === 'payment_inquiry') {
+            return $nextBookingField !== null
+                ? 'answer_payment_then_collect_' . $nextBookingField->field_key
+                : 'answer_payment_question';
+        }
+
         if (in_array($conversation->stageEnum(), [
             ConversationStage::PaymentDiscussion,
             ConversationStage::Closing,
         ], true)) {
-            $nextBookingField = $this->leadBookingDataService->nextMissingRequiredField($lead, FormType::Booking);
             if ($nextBookingField !== null) {
                 return 'collect_' . $nextBookingField->field_key;
             }
         }
 
         if ($lead->status === LeadStatus::Hot || $lead->status === LeadStatus::ReadyForHuman) {
-            $nextBookingField = $this->leadBookingDataService->nextMissingRequiredField($lead, FormType::Booking);
             if ($nextBookingField !== null) {
                 return 'collect_' . $nextBookingField->field_key;
             }
@@ -512,7 +533,10 @@ class ConversationStateService
             return 'ask_' . $nextDiscoveryField;
         }
 
-        if ($classifier !== null && in_array($classifier->intent, ['tanya_harga', 'tanya_paket', 'bandingkan_paket'], true)) {
+        if (
+            ($classifier !== null && in_array($classifier->intent, ['tanya_harga', 'tanya_paket', 'bandingkan_paket'], true))
+            || in_array($currentIntent, ['price_inquiry', 'package_inquiry'], true)
+        ) {
             if ($nextRecommendationField !== null) {
                 return 'ask_' . $nextRecommendationField;
             }
@@ -520,26 +544,17 @@ class ConversationStateService
             return empty($unresolved) ? 'share_pricelist' : 'continue_qualification';
         }
 
-        if ($interpretation !== null) {
-            return match ($interpretation->canonicalIntent) {
-                'booking_intent' => 'guide_to_booking',
-                'availability_inquiry' => 'handoff_to_human',
-                'payment_inquiry' => 'answer_payment_question',
-                'price_inquiry', 'package_inquiry' => $nextRecommendationField !== null
-                    ? 'ask_' . $nextRecommendationField
-                    : (empty($unresolved) ? 'share_pricelist' : 'continue_qualification'),
-                default => $conversation->stageEnum() === ConversationStage::Closing ? 'guide_to_booking' : 'respond_to_user',
-            };
-        }
-
-        if (in_array($conversation->stageEnum(), [
-            ConversationStage::PaymentDiscussion,
-            ConversationStage::Closing,
-        ], true)) {
-            return 'guide_to_booking';
-        }
-
-        return 'respond_to_user';
+        return match ($currentIntent) {
+            'booking_intent' => 'guide_to_booking',
+            'availability_inquiry' => 'handoff_to_human',
+            'payment_inquiry' => 'answer_payment_question',
+            default => in_array($conversation->stageEnum(), [
+                ConversationStage::PaymentDiscussion,
+                ConversationStage::Closing,
+            ], true)
+                ? 'guide_to_booking'
+                : 'respond_to_user',
+        };
     }
 
     private function extractQuestion(string $message): ?string
