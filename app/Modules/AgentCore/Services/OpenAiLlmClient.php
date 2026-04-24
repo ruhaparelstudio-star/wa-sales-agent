@@ -10,7 +10,7 @@ use RuntimeException;
 
 class OpenAiLlmClient implements LlmClientInterface
 {
-    public const MODEL = 'gpt-4o-mini'; // fallback; override via OPENAI_MODEL=gpt-4.5-mini in .env
+    public const MODEL = 'gpt-5'; // fallback; override via OPENAI_MODEL=gpt-4.5-mini in .env
 
     public function __construct(
         private readonly ClientContract $client,

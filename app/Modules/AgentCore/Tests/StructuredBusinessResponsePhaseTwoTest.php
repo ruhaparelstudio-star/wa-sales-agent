@@ -51,6 +51,9 @@ function buildStructuredPayloadOrchestrator(LlmClientInterface $llm): AgentOrche
         ContextAwareFallbackBuilder::class,
         FallbackGuardService::class,
         QualityFilterService::class,
+        \App\Modules\AgentCore\Services\ResponsePlannerService::class,
+        \App\Modules\Conversations\Services\ConversationStateService::class,
+        \App\Modules\Knowledge\Services\PricelistService::class,
     ] as $class) {
         app()->forgetInstance($class);
     }
