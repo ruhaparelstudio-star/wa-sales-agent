@@ -2,6 +2,7 @@
 
 namespace App\Modules\WhatsApp\Jobs;
 
+use App\Modules\AgentCore\Enums\TurnOutcomeType;
 use App\Modules\AgentCore\Jobs\RunAgentCoreJob;
 use App\Modules\AgentCore\Support\AgentLog;
 use App\Modules\Conversations\Services\ConversationLockService;
@@ -129,13 +130,19 @@ class ProcessInboundMessageJob implements ShouldQueue
                     if ($ingestService->isMediaMessage($message)) {
                         $mediaHandler->handleInboundMedia($message, $tenant);
 
-                        $autoReply = $ingestService->getMediaAutoResponse($message->message_type);
-                        if ($autoReply !== '') {
-                            Log::info('[ProcessInboundMessage] Media auto-reply queued', [
-                                'lead_id' => $message->lead_id,
-                                'reply'   => $autoReply,
-                            ]);
-                        }
+                        // Media path intentionally does not dispatch an auto-reply today.
+                        // Log an honest no-reply outcome so observability matches behavior
+                        // (previously this logged "Media auto-reply queued" without ever
+                        // queueing a send — see System Audit Report §17 / WS-8).
+                        AgentLog::info('turn.no_reply_exit', [
+                            'tenant_id' => $message->tenant_id,
+                            'lead_id' => $message->lead_id,
+                            'conversation_id' => $message->conversation_id,
+                            'message_id' => $message->id,
+                            'message_type' => $message->message_type,
+                            'outcome' => TurnOutcomeType::NoReply->value,
+                            'reason' => 'media_received_no_auto_reply',
+                        ]);
 
                         $duplicateGuard->markInboundProcessed($receipt, $message);
                         return;

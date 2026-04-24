@@ -6,6 +6,7 @@ use App\Modules\AgentCore\Contracts\LlmClientInterface;
 use App\Modules\AgentCore\DTOs\ClassifierOutput;
 use App\Modules\AgentCore\DTOs\InterpretationResult;
 use App\Modules\AgentCore\Enums\LlmMode;
+use App\Modules\AgentCore\Enums\TurnOutcomeType;
 use App\Modules\AgentCore\Exceptions\InvalidClassifierOutputException;
 use App\Modules\AgentCore\Support\AgentLog;
 use App\Modules\Booking\Enums\FormType;
@@ -2122,6 +2123,7 @@ class AgentOrchestrator
         Message $message,
         string $reason,
         array $context = [],
+        TurnOutcomeType $outcomeType = TurnOutcomeType::NoReply,
     ): void {
         $payload = array_merge([
             'tenant_id' => $lead->tenant_id,
@@ -2129,6 +2131,7 @@ class AgentOrchestrator
             'conversation_id' => $conv->id,
             'message_id' => $message->id,
             'stage' => $conv->stageEnum()->value,
+            'outcome' => $outcomeType->value,
             'reason' => $reason,
         ], $context);
 

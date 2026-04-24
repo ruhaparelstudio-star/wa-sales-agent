@@ -181,7 +181,10 @@ test('applyClassifierResult stores canonical intent instead of raw classifier la
     $classifier = new ClassifierOutput(
         intent: 'package_recommendation',
         sentiment: 'neutral',
-        extractedFields: ['service_type' => 'wedding'],
+        extractedFields: [
+            'service_type' => 'lamaran',
+            'package_interest' => 'foto dan video',
+        ],
         needsHandoff: false,
         handoffReason: null,
         confidence: 0.9,
@@ -194,7 +197,49 @@ test('applyClassifierResult stores canonical intent instead of raw classifier la
 
     expect($state->current_intent)->toBe('package_inquiry')
         ->and($state->interpretation_source)->toBe('llm')
-        ->and($state->intent_confidence)->toBe(0.9);
+        ->and($state->intent_confidence)->toBe(0.9)
+        ->and($state->filled_slots['event_type'])->toBe('engagement')
+        ->and($state->filled_slots['package_interest'])->toBe('photo + video');
+});
+
+test('applyInterpretationResult lets latest event correction override stale memory snapshot', function () {
+    $tenant = Tenant::factory()->create();
+    $lead   = Lead::factory()->interested()->create(['tenant_id' => $tenant->id]);
+    $conv   = Conversation::factory()->atStage(ConversationStage::PackageRecommendation)->create([
+        'tenant_id' => $tenant->id,
+        'lead_id' => $lead->id,
+    ]);
+
+    app(LeadMemoryService::class)->upsert($lead, [
+        'service_type' => 'wedding',
+        'event_date' => '2026-12-12',
+        'event_location' => 'Bandung',
+    ]);
+
+    $classifier = new ClassifierOutput(
+        intent: 'tanya_paket',
+        sentiment: 'neutral',
+        extractedFields: ['service_type' => 'wedding'],
+        needsHandoff: false,
+        handoffReason: null,
+        confidence: 0.88,
+        currentStage: ConversationStage::PackageRecommendation,
+        suggestedNextStage: ConversationStage::PackageRecommendation,
+        missingCriticalFields: [],
+    );
+
+    $interpretation = new InterpretationResult(
+        canonicalIntent: 'package_inquiry',
+        legacyIntent: 'tanya_paket',
+        slots: ['event_type' => 'lamaran'],
+        confidence: 0.93,
+        source: 'rules+llm',
+    );
+
+    $state = makeConversationStateService()->applyInterpretationResult($conv, $lead->fresh(), $interpretation, $classifier);
+
+    expect($state->filled_slots['event_type'])->toBe('engagement')
+        ->and($state->filled_slots['service_type'])->toBe('engagement');
 });
 
 test('pricing intent asks for missing client basics before recommending packages', function () {
@@ -325,6 +370,72 @@ test('inbound interpretation clears stale last_agent_question after the asked fi
     expect($state->last_agent_question)->toBeNull()
         ->and($state->last_answered_topic)->toBe('event_date')
         ->and($state->filled_slots['event_date'])->toBe('2026-12-30');
+});
+
+test('loadOrCreate clears stale next_expected_field outside collection stages and leaves asked_fields untouched', function () {
+    $tenant = Tenant::factory()->create();
+    $lead   = Lead::factory()->interested()->create(['tenant_id' => $tenant->id]);
+    $conv   = Conversation::factory()->atStage(ConversationStage::PackageRecommendation)->create([
+        'tenant_id' => $tenant->id,
+        'lead_id' => $lead->id,
+        'asked_fields' => ['location'],
+        'next_expected_field' => 'name',
+    ]);
+
+    app(LeadMemoryService::class)->upsert($lead, [
+        'name' => 'Aris',
+        'event_date' => '2026-12-12',
+        'event_location' => 'Jakarta',
+    ]);
+
+    $state = makeConversationStateService()->loadOrCreate($conv->fresh(), $lead->fresh());
+    $conv->refresh();
+
+    expect($state->filled_slots['name'])->toBe('Aris')
+        ->and($conv->next_expected_field)->toBeNull()
+        ->and($conv->asked_fields)->toBe(['location']);
+});
+
+test('applyInterpretationResult recomputes next_expected_field from current snapshot in collection stages', function () {
+    $tenant = Tenant::factory()->create();
+    $lead   = Lead::factory()->interested()->create(['tenant_id' => $tenant->id]);
+    $conv   = Conversation::factory()->atStage(ConversationStage::Qualification)->create([
+        'tenant_id' => $tenant->id,
+        'lead_id' => $lead->id,
+        'asked_fields' => ['service_type'],
+        'next_expected_field' => 'event_date',
+    ]);
+
+    app(LeadMemoryService::class)->upsert($lead, [
+        'name' => 'Aris',
+        'event_date' => '2026-12-12',
+    ]);
+
+    $classifier = new ClassifierOutput(
+        intent: 'qualification',
+        sentiment: 'neutral',
+        extractedFields: ['event_date' => '2026-12-12'],
+        needsHandoff: false,
+        handoffReason: null,
+        confidence: 0.88,
+        currentStage: ConversationStage::Qualification,
+        suggestedNextStage: ConversationStage::Qualification,
+        missingCriticalFields: ['location'],
+    );
+
+    $interpretation = new InterpretationResult(
+        canonicalIntent: 'unclear',
+        legacyIntent: 'qualification',
+        slots: ['event_date' => '2026-12-12', 'name' => 'Aris'],
+        confidence: 0.88,
+        source: 'rules+llm',
+    );
+
+    makeConversationStateService()->applyInterpretationResult($conv->fresh(), $lead->fresh(), $interpretation, $classifier);
+    $conv->refresh();
+
+    expect($conv->asked_fields)->toBe(['service_type'])
+        ->and($conv->next_expected_field)->toBe('location');
 });
 
 test('critical slots are rehydrated from lead memory snapshot into filled slots', function () {

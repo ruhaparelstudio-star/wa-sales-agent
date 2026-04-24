@@ -52,9 +52,11 @@ class ConversationStateService
 
         $state = $this->loadOrCreate($conversation, $lead);
 
+        // next_best_action is decided later in the turn (after classifier/interpretation)
+        // and committed by applyClassifierResult / recordOutboundMessage. Touching it here
+        // would just stamp the previous turn's default and churn the column mid-turn.
         $state->update([
             'last_user_message' => $message->content,
-            'next_best_action' => $this->resolveNextBestAction($conversation, $lead),
         ]);
 
         return $state->fresh();
@@ -87,6 +89,7 @@ class ConversationStateService
         }
 
         $state->update($payload);
+        $this->syncConversationCollectionMetadata($conversation, $lead);
 
         return $state->fresh();
     }
@@ -111,6 +114,7 @@ class ConversationStateService
             'unresolved_questions' => $unresolved,
             'next_best_action' => $this->resolveNextBestAction($conversation, $lead, $classifier, $unresolved),
         ]);
+        $this->syncConversationCollectionMetadata($conversation, $lead);
 
         return $state->fresh();
     }
@@ -223,6 +227,8 @@ class ConversationStateService
         if ($this->needsSync($state, $updates)) {
             $state->update($updates);
         }
+
+        $this->syncConversationCollectionMetadata($conversation, $lead);
     }
 
     private function needsSync(ConversationState $state, array $updates): bool
@@ -234,6 +240,60 @@ class ConversationStateService
         }
 
         return false;
+    }
+
+    /**
+     * Keep conversation-level collection metadata aligned with the durable snapshot
+     * so prompt/context layers do not keep stale discovery targets around.
+     *
+     * Only writes `next_expected_field` now. `asked_fields` is owned exclusively by
+     * RecordAskedFieldAction, which appends a field only after the outbound message
+     * actually contains that question.
+     */
+    private function syncConversationCollectionMetadata(
+        Conversation $conversation,
+        Lead $lead,
+    ): void {
+        $snapshot = $this->leadMemoryService->getSnapshot($lead);
+        // asked_fields is append-only and owned by RecordAskedFieldAction. Previously we
+        // auto-merged resolved (already-filled) fields here to stop re-asking, but that
+        // leaked false-positive slot extractions into asked_fields. missingDiscoveryFields
+        // already skips fields that are filled in the lead snapshot, so the merge was
+        // redundant — and harmful when slot extraction made a bad guess.
+        $askedFields = $conversation->askedFields();
+
+        $nextExpectedField = $this->computedNextExpectedField($conversation, $snapshot, $askedFields);
+
+        if ($conversation->next_expected_field === $nextExpectedField) {
+            return;
+        }
+
+        $conversation->forceFill([
+            'next_expected_field' => $nextExpectedField,
+        ])->save();
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     * @param  list<string>  $askedFields
+     */
+    private function computedNextExpectedField(
+        Conversation $conversation,
+        array $snapshot,
+        array $askedFields,
+    ): ?string {
+        if (! in_array($conversation->stageEnum(), [
+            ConversationStage::NewLead,
+            ConversationStage::Qualification,
+            ConversationStage::NeedsDiscovery,
+        ], true)) {
+            return null;
+        }
+
+        $probe = clone $conversation;
+        $probe->asked_fields = $askedFields;
+
+        return $this->conversationStageService->nextExpectedField($probe, $snapshot);
     }
 
     /**
@@ -251,17 +311,17 @@ class ConversationStateService
         }
 
         return [
-            'event_type' => $interpretedSlots['event_type'] ?? $snapshot['service_type'] ?? $existing['event_type'] ?? null,
+            'event_type' => $this->normalizeEventTypeValue($interpretedSlots['event_type'] ?? $snapshot['service_type'] ?? $existing['event_type'] ?? null),
             'name' => $snapshot['name'] ?? $existing['name'] ?? null,
             'event_date' => $interpretedSlots['event_date'] ?? $snapshot['event_date'] ?? $existing['event_date'] ?? null,
             'event_time_start' => $interpretedSlots['event_time_start'] ?? $snapshot['event_time_start'] ?? $existing['event_time_start'] ?? null,
             'event_time_end' => $interpretedSlots['event_time_end'] ?? $snapshot['event_time_end'] ?? $existing['event_time_end'] ?? null,
             'location' => $interpretedSlots['location'] ?? $snapshot['event_location'] ?? $existing['location'] ?? null,
-            'service_type' => $snapshot['service_type'] ?? $existing['service_type'] ?? $interpretedSlots['event_type'] ?? null,
+            'service_type' => $this->normalizeEventTypeValue($interpretedSlots['event_type'] ?? $snapshot['service_type'] ?? $existing['service_type'] ?? null),
             'guest_count' => $snapshot['guest_count'] ?? $existing['guest_count'] ?? null,
             'budget' => $interpretedSlots['budget'] ?? ($budget !== '' ? $budget : ($existing['budget'] ?? null)),
             'pricing_focus' => $interpretedSlots['pricing_focus'] ?? $snapshot['pricing_focus'] ?? $existing['pricing_focus'] ?? null,
-            'package_interest' => $interpretedSlots['package_interest'] ?? $snapshot['package_interest'] ?? $existing['package_interest'] ?? null,
+            'package_interest' => $this->normalizePackageInterestValue($interpretedSlots['package_interest'] ?? $snapshot['package_interest'] ?? $existing['package_interest'] ?? null),
             'payment_topic' => $interpretedSlots['payment_topic'] ?? $snapshot['payment_topic'] ?? $this->inferPaymentTopic($lead) ?? $existing['payment_topic'] ?? null,
             'inquiry_fields' => $this->leadBookingDataService->getForLead($lead, FormType::Inquiry),
             'booking_fields' => $this->leadBookingDataService->getForLead($lead, FormType::Booking),
@@ -425,6 +485,16 @@ class ConversationStateService
             return $closingPolicy['next_best_action'];
         }
 
+        if (in_array($conversation->stageEnum(), [
+            ConversationStage::PaymentDiscussion,
+            ConversationStage::Closing,
+        ], true)) {
+            $nextBookingField = $this->leadBookingDataService->nextMissingRequiredField($lead, FormType::Booking);
+            if ($nextBookingField !== null) {
+                return 'collect_' . $nextBookingField->field_key;
+            }
+        }
+
         if ($lead->status === LeadStatus::Hot || $lead->status === LeadStatus::ReadyForHuman) {
             $nextBookingField = $this->leadBookingDataService->nextMissingRequiredField($lead, FormType::Booking);
             if ($nextBookingField !== null) {
@@ -521,15 +591,59 @@ class ConversationStateService
             }
 
             match ($key) {
-                'service_type' => $slots['event_type'] = $value,
+                'service_type', 'event_type' => $slots['event_type'] = $this->normalizeEventTypeValue($value),
                 'event_date' => $slots['event_date'] = $value,
                 'location' => $slots['location'] = $value,
                 'budget' => $slots['budget'] = is_scalar($value) ? (string) $value : null,
+                'package_interest' => $slots['package_interest'] = $this->normalizePackageInterestValue($value),
                 default => null,
             };
         }
 
         return array_filter($slots, static fn (mixed $value): bool => $value !== null && $value !== '');
+    }
+
+    private function normalizeEventTypeValue(mixed $value): ?string
+    {
+        if (! is_scalar($value)) {
+            return null;
+        }
+
+        $normalized = Str::lower(trim((string) $value));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return match (true) {
+            str_contains($normalized, 'lamaran'), str_contains($normalized, 'engagement') => 'engagement',
+            str_contains($normalized, 'prewedding'), str_contains($normalized, 'pre wedding') => 'prewedding',
+            str_contains($normalized, 'wedding'), str_contains($normalized, 'akad'), str_contains($normalized, 'resepsi') => 'wedding',
+            default => trim((string) $value),
+        };
+    }
+
+    private function normalizePackageInterestValue(mixed $value): ?string
+    {
+        if (! is_scalar($value)) {
+            return null;
+        }
+
+        $normalized = Str::lower(trim((string) $value));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return match (true) {
+            str_contains($normalized, 'photo') && str_contains($normalized, 'video') => 'photo + video',
+            str_contains($normalized, 'foto') && str_contains($normalized, 'video') => 'photo + video',
+            str_contains($normalized, 'photo') && str_contains($normalized, 'album') => 'photo + album',
+            str_contains($normalized, 'foto') && str_contains($normalized, 'album') => 'photo + album',
+            str_contains($normalized, 'photo'), str_contains($normalized, 'foto') => 'photo only',
+            str_contains($normalized, 'video') => 'video only',
+            default => trim((string) $value),
+        };
     }
 
     /**

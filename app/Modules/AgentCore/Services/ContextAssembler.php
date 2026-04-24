@@ -118,7 +118,7 @@ class ContextAssembler
         $sections[] = $this->recentMessagesSection($conv);
 
         if ($this->includesSummary($mode)) {
-            $sections[] = $this->summarySection($conv);
+            $sections[] = $this->summarySection($conv, $mode);
         }
 
         $sections[] = $this->taskSection($mode);
@@ -276,10 +276,13 @@ class ContextAssembler
         return "[RECENT MESSAGES]\n{$lines}";
     }
 
-    private function summarySection(Conversation $conv): string
+    private function summarySection(Conversation $conv, LlmMode $mode): string
     {
         $summary = $this->conversationSummaryService->getSummary($conv);
-        $text = $summary ? Str::limit($summary, 600, '') : '(no summary yet)';
+        // Classifier gets a compact summary to keep context symmetrical with the
+        // responder without inflating tokens — see System Audit Report §13 / WS-4.
+        $limit = $mode === LlmMode::Classifier ? 250 : 600;
+        $text = $summary ? Str::limit($summary, $limit, '') : '(no summary yet)';
         return "[CONVERSATION SUMMARY]\n{$text}";
     }
 
@@ -386,6 +389,10 @@ class ContextAssembler
 
     private function includesSummary(LlmMode $mode): bool
     {
-        return $mode !== LlmMode::Classifier;
+        // Summary is included for every mode, including Classifier. The Classifier
+        // branch uses a shorter variant (see summarySection) so analyzer and
+        // responder share the same long-term memory without bloating classifier
+        // prompt tokens.
+        return true;
     }
 }

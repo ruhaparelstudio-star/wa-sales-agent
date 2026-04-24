@@ -116,9 +116,4 @@ class MessageIngestService
     {
         return $message->message_type->isMedia();
     }
-
-    public function getMediaAutoResponse(MessageType $type): string
-    {
-        return $type->autoResponse();
-    }
 }
