@@ -14,7 +14,9 @@ use App\Modules\AgentCore\Enums\FinalAction;
 use App\Modules\AgentCore\Enums\LlmMode;
 use App\Modules\AgentCore\Enums\TurnOutcomeType;
 use App\Modules\AgentCore\Exceptions\InvalidClassifierOutputException;
+use App\Modules\AgentCore\DTOs\PackageDetailsHandlerInput;
 use App\Modules\AgentCore\Handlers\BookingFieldReplyHandler;
+use App\Modules\AgentCore\Handlers\PackageDetailsInquiryHandler;
 use App\Modules\AgentCore\Support\AgentLog;
 use App\Modules\AgentCore\Support\DecisionTrace;
 use App\Modules\Booking\Enums\FormType;
@@ -72,6 +74,7 @@ class AgentOrchestrator
         private readonly ResponseEvaluatorService $responseEvaluatorService,
         private readonly TurnDecisionServiceInterface $turnDecisionService,
         private readonly BookingFieldReplyHandler $bookingFieldReplyHandler,
+        private readonly PackageDetailsInquiryHandler $packageDetailsInquiryHandler,
         private readonly BusinessPayloadResponder $businessPayloadResponder,
     ) {}
 
@@ -359,6 +362,14 @@ class AgentOrchestrator
         }
 
         $this->leadStageService->advanceStage($lead, $this->nextStageFromIntent($lead, $classifier));
+
+        if ($decisionAction === FinalAction::ReplyWithPackageDetails
+            && $this->shouldSendGroundedPackageAnswer($lead, $conv, $message, $classifier->intent)
+            && $this->dispatchPackageDetailsPayload($lead, $conv, $message, $agent, $classifier->intent, $turnLogger)
+        ) {
+            $this->dispatchSummaryRefresh($conv);
+            return;
+        }
 
         if ($this->shouldSendGroundedPackageAnswer($lead, $conv, $message, $classifier->intent)) {
             $reply = $this->queueGroundedPackageReply($lead, $conv, $agent, $message);
@@ -2163,6 +2174,53 @@ class AgentOrchestrator
     /**
      * @param  array<string, mixed>  $context
      */
+    private function dispatchPackageDetailsPayload(
+        Lead $lead,
+        Conversation $conv,
+        Message $message,
+        WhatsAppAgent $agent,
+        string $intent,
+        ConversationTurnLogger $turnLogger,
+    ): bool {
+        $payload = $this->packageDetailsInquiryHandler->buildPayload(
+            new PackageDetailsHandlerInput(
+                lead: $lead,
+                conversation: $conv,
+                message: $message,
+                intent: $intent,
+            ),
+        );
+
+        if ($payload === null) {
+            return false;
+        }
+
+        $rendered = $this->businessPayloadResponder->render($payload);
+        $replyText = (string) ($rendered->text ?? '');
+
+        if ($replyText === '') {
+            return false;
+        }
+
+        $this->queueAck(
+            $agent,
+            $lead,
+            $conv,
+            $replyText,
+            $message,
+            0,
+            $rendered->nextBestAction,
+            $rendered->toolResultSummary,
+        );
+
+        $turnLogger
+            ->setResponse('text', $replyText)
+            ->setNextBestAction($rendered->nextBestAction)
+            ->setTool('grounded_package_reply');
+
+        return true;
+    }
+
     private function decideTurn(
         Lead $lead,
         Conversation $conv,

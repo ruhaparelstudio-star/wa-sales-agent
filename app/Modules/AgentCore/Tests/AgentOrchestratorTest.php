@@ -166,6 +166,9 @@ function buildOrchestrator(LlmClientInterface $llm, ?BookingSchemaService $booki
             $bookingDataService,
             new \App\Modules\Booking\Services\BookingFieldValidationService(),
         ),
+        new \App\Modules\AgentCore\Handlers\PackageDetailsInquiryHandler(
+            new KnowledgeRetrievalService(),
+        ),
         new \App\Modules\AgentCore\Services\BusinessPayloadResponder(),
     );
 }
