@@ -315,14 +315,21 @@ class AgentOrchestrator
             return;
         }
 
-        if ($classifier->sentiment === 'negative' && $classifier->confidence >= 0.8) {
-            $turnLogger->setResponse('negative_sentiment', null);
-            $this->handleNegativeSentiment($lead, $conv, $agent, $message);
+        if ($decisionAction === FinalAction::RequestHumanHandoff) {
+            $negativeSentiment = (bool) ($decision->detectedSignals['negative_sentiment'] ?? false);
+
+            if ($negativeSentiment) {
+                $turnLogger->setResponse('negative_sentiment', null);
+                $this->handleNegativeSentiment($lead, $conv, $agent, $message);
+            } else {
+                $turnLogger->setResponse('handoff', null)->setTool('handoff');
+                $this->handleHandoff($lead, $conv, $classifier, $agent, $message);
+            }
             $this->dispatchSummaryRefresh($conv);
             return;
         }
 
-        if ($this->shouldHandleReadyToBook($classifier)) {
+        if ($decisionAction === FinalAction::GuideToBooking || $this->shouldHandleReadyToBook($classifier)) {
             $turnLogger->setResponse('ready_to_book', null)->setTool('booking_flow');
             $this->leadStageService->advanceStage($lead, $this->nextStageFromIntent($lead, $classifier));
             $this->handleReadyToBook($lead, $conv, $agent, $message);
@@ -336,6 +343,10 @@ class AgentOrchestrator
             return;
         }
 
+        // Safety net: if TurnDecisionService did not flag handoff but the classifier
+        // still signals needsHandoff (e.g., handoff_reason that the decision service
+        // does not yet classify as handoff-worthy), fall back to legacy handoff path.
+        // This keeps behavior conservative while we migrate more actions.
         if ($classifier->needsHandoff) {
             $turnLogger->setResponse('handoff', null)->setTool('handoff');
             $this->handleHandoff($lead, $conv, $classifier, $agent, $message);
