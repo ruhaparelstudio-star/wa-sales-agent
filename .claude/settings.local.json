@@ -53,7 +53,15 @@
       "Bash(MSYS_NO_PATHCONV=1 docker compose exec *)",
       "Bash(./vendor/bin/pest --filter=\"ConversationStageServiceTest|PromptBuilderToneProfileTest|ContextAssemblerStageTest\")",
       "Bash(./vendor/bin/pest app/Modules/AgentCore/Tests/FallbackGuardServiceTest.php)",
-      "Bash(php -l app/Modules/AgentCore/Services/AgentOrchestrator.php app/Modules/AgentCore/Services/ConversationTurnLogger.php app/Modules/AgentCore/Services/ResponseEvaluatorService.php app/Modules/AgentCore/Services/LoggingLlmClient.php app/Modules/AgentCore/Models/ConversationTurnLog.php app/Modules/AgentCore/Models/LlmUsageLog.php app/Modules/AgentCore/Support/AgentLog.php app/Modules/AgentCore/Jobs/RunAgentCoreJob.php app/Modules/WhatsApp/Jobs/ProcessInboundMessageJob.php database/migrations/2026_04_20_120000_extend_llm_usage_logs_for_tracing.php database/migrations/2026_04_20_120001_create_conversation_turn_logs_table.php)"
+      "Bash(php -l app/Modules/AgentCore/Services/AgentOrchestrator.php app/Modules/AgentCore/Services/ConversationTurnLogger.php app/Modules/AgentCore/Services/ResponseEvaluatorService.php app/Modules/AgentCore/Services/LoggingLlmClient.php app/Modules/AgentCore/Models/ConversationTurnLog.php app/Modules/AgentCore/Models/LlmUsageLog.php app/Modules/AgentCore/Support/AgentLog.php app/Modules/AgentCore/Jobs/RunAgentCoreJob.php app/Modules/WhatsApp/Jobs/ProcessInboundMessageJob.php database/migrations/2026_04_20_120000_extend_llm_usage_logs_for_tracing.php database/migrations/2026_04_20_120001_create_conversation_turn_logs_table.php)",
+      "Bash(git checkout *)",
+      "Bash(git stash *)",
+      "Bash(cp /home/arsdev/projects/sales_agent_wa/app/Modules/Conversations/Services/ConversationStateService.php /tmp/css_new.php)",
+      "Bash(cp /home/arsdev/projects/sales_agent_wa/app/Modules/Conversations/Tests/ConversationStateServiceTest.php /tmp/csst_new.php)",
+      "Bash(cp /tmp/css_new.php /home/arsdev/projects/sales_agent_wa/app/Modules/Conversations/Services/ConversationStateService.php)",
+      "Bash(cp /tmp/csst_new.php /home/arsdev/projects/sales_agent_wa/app/Modules/Conversations/Tests/ConversationStateServiceTest.php)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
