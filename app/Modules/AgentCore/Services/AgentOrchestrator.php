@@ -4,6 +4,7 @@ namespace App\Modules\AgentCore\Services;
 
 use App\Modules\AgentCore\Contracts\LlmClientInterface;
 use App\Modules\AgentCore\Contracts\TurnDecisionServiceInterface;
+use App\Modules\AgentCore\DTOs\BookingFieldReplyHandlerInput;
 use App\Modules\AgentCore\DTOs\ClassifierOutput;
 use App\Modules\AgentCore\DTOs\FinalTurnDecision;
 use App\Modules\AgentCore\DTOs\InterpretationResult;
@@ -13,6 +14,7 @@ use App\Modules\AgentCore\Enums\FinalAction;
 use App\Modules\AgentCore\Enums\LlmMode;
 use App\Modules\AgentCore\Enums\TurnOutcomeType;
 use App\Modules\AgentCore\Exceptions\InvalidClassifierOutputException;
+use App\Modules\AgentCore\Handlers\BookingFieldReplyHandler;
 use App\Modules\AgentCore\Support\AgentLog;
 use App\Modules\AgentCore\Support\DecisionTrace;
 use App\Modules\Booking\Enums\FormType;
@@ -69,6 +71,8 @@ class AgentOrchestrator
         private readonly FallbackGuardService $fallbackGuardService,
         private readonly ResponseEvaluatorService $responseEvaluatorService,
         private readonly TurnDecisionServiceInterface $turnDecisionService,
+        private readonly BookingFieldReplyHandler $bookingFieldReplyHandler,
+        private readonly BusinessPayloadResponder $businessPayloadResponder,
     ) {}
 
     public function handleInbound(Message $message, Lead $lead, Conversation $conv, ?string $traceId = null): void
@@ -980,36 +984,48 @@ class AgentOrchestrator
             return false;
         }
 
-        $field = $this->leadBookingDataService->nextMissingRequiredField($lead, FormType::Booking);
-        if ($field === null) {
+        // Delegate decide-how-to-respond + persistence to BookingFieldReplyHandler.
+        // The handler validates the raw value via BookingFieldValidationService before
+        // upserting — invalid values now produce a clarification payload instead of
+        // silently landing in LeadBookingData. BusinessPayloadResponder turns the
+        // payload into the final wording.
+        $payload = $this->bookingFieldReplyHandler->buildPayload(
+            new BookingFieldReplyHandlerInput(
+                lead: $lead,
+                conversation: $message->conversation,
+                message: $message,
+                formType: FormType::Booking,
+            ),
+        );
+
+        if ($payload === null) {
             return false;
         }
 
-        $this->leadBookingDataService->upsert($lead, FormType::Booking, [
-            $field->field_key => $content,
-        ]);
+        $rendered = $this->businessPayloadResponder->render($payload);
+        $replyText = (string) ($rendered->text ?? '');
 
-        $nextField = $this->leadBookingDataService->nextMissingRequiredField($lead->fresh(), FormType::Booking);
-
-        $reply = $nextField
-            ? sprintf('Siap, aku catat ya. Lanjut, boleh info %s?', $nextField->label)
-            : 'Siap, data bookingnya sudah lengkap dan sudah aku catat ya.';
+        if ($replyText === '') {
+            return false;
+        }
 
         $this->queueAck(
             $agent,
             $lead,
             $message->conversation,
-            $reply,
+            $replyText,
             $message,
             0,
-            $nextField ? 'collect_' . $nextField->field_key : 'handoff_to_human',
-            'booking_field_saved:' . $field->field_key,
+            $rendered->nextBestAction,
+            $rendered->toolResultSummary,
         );
 
         Log::info('[AgentOrchestrator] Stored booking field reply', [
             'lead_id' => $lead->id,
-            'field_key' => $field->field_key,
-            'next_field_key' => $nextField?->field_key,
+            'payload_type' => $payload->payloadType,
+            'saved_field' => $payload->data['saved_field']['key'] ?? null,
+            'invalid_field' => $payload->data['invalid_field']['key'] ?? null,
+            'next_field' => $payload->data['next_field']['key'] ?? null,
         ]);
 
         return true;

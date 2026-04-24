@@ -162,6 +162,11 @@ function buildOrchestrator(LlmClientInterface $llm, ?BookingSchemaService $booki
         $fallbackGuardService,
         new \App\Modules\AgentCore\Services\ResponseEvaluatorService(),
         new \App\Modules\AgentCore\Services\TurnDecisionService(),
+        new \App\Modules\AgentCore\Handlers\BookingFieldReplyHandler(
+            $bookingDataService,
+            new \App\Modules\Booking\Services\BookingFieldValidationService(),
+        ),
+        new \App\Modules\AgentCore\Services\BusinessPayloadResponder(),
     );
 }
 
