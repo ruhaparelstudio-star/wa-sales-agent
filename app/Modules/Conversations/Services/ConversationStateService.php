@@ -5,6 +5,7 @@ namespace App\Modules\Conversations\Services;
 use App\Modules\AgentCore\DTOs\ClassifierOutput;
 use App\Modules\AgentCore\DTOs\InterpretationResult;
 use App\Modules\AgentCore\Services\ClosingPolicyService;
+use App\Modules\AgentCore\Services\SlotExtractionService;
 use App\Modules\Booking\Enums\FormType;
 use App\Modules\Booking\Services\LeadBookingDataService;
 use App\Modules\Conversations\Enums\ConversationStage;
@@ -171,6 +172,28 @@ class ConversationStateService
         return $state->fresh();
     }
 
+    /**
+     * Finalize state for a turn that exited without sending an outbound reply
+     * (System Audit Report §14 / WS-6). Mirrors the responsibility of
+     * recordOutboundMessage so next_best_action and last_tool_result_summary
+     * still get written exactly once per turn instead of being left null.
+     */
+    public function recordNoReplyOutcome(
+        Conversation $conversation,
+        Lead $lead,
+        string $outcome,
+        ?string $nextBestAction = null,
+    ): ConversationState {
+        $state = $this->loadOrCreate($conversation, $lead);
+
+        $state->update([
+            'next_best_action' => $nextBestAction ?? $this->resolveNextBestAction($conversation, $lead, $state),
+            'last_tool_result_summary' => $outcome,
+        ]);
+
+        return $state->fresh();
+    }
+
     public function recordToolResult(
         Conversation $conversation,
         Lead $lead,
@@ -324,7 +347,9 @@ class ConversationStateService
             'event_date' => $interpretedSlots['event_date'] ?? $snapshot['event_date'] ?? $existing['event_date'] ?? null,
             'event_time_start' => $interpretedSlots['event_time_start'] ?? $snapshot['event_time_start'] ?? $existing['event_time_start'] ?? null,
             'event_time_end' => $interpretedSlots['event_time_end'] ?? $snapshot['event_time_end'] ?? $existing['event_time_end'] ?? null,
-            'location' => $interpretedSlots['location'] ?? $snapshot['event_location'] ?? $existing['location'] ?? null,
+            'location' => SlotExtractionService::sanitizeLocationCandidate(
+                $interpretedSlots['location'] ?? $snapshot['event_location'] ?? $existing['location'] ?? null
+            ),
             'service_type' => $this->normalizeEventTypeValue($interpretedSlots['event_type'] ?? $snapshot['service_type'] ?? $existing['service_type'] ?? null),
             'guest_count' => $snapshot['guest_count'] ?? $existing['guest_count'] ?? null,
             'budget' => $interpretedSlots['budget'] ?? ($budget !== '' ? $budget : ($existing['budget'] ?? null)),

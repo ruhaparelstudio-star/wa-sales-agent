@@ -63,37 +63,22 @@ class TurnPipelineService
         private readonly FallbackGuardService $fallbackGuardService,
         private readonly TurnDecisionServiceInterface $turnDecisionService,
         private readonly ActionDispatcher $actionDispatcher,
+        private readonly ?TurnOutcomeLogger $turnOutcomeLogger = null,
     ) {}
 
-    public function runInbound(Message $message, Lead $lead, Conversation $conv, ConversationTurnLogger $turnLogger): void
+    private function outcomeLogger(): TurnOutcomeLogger
     {
+        return $this->turnOutcomeLogger ?? new TurnOutcomeLogger($this->conversationStateService);
+    }
+
+    public function runInbound(Message $message, Lead $lead, Conversation $conv, WhatsAppAgent $agent, ConversationTurnLogger $turnLogger): void
+    {
+        // Lifecycle (TurnLifecycleService) is now the gate for guardrail,
+        // agent-availability, and superseded checks (System Audit Report
+        // §16 / WS-9). Pipeline assumes those have already passed.
         $this->conversationStateService->recordInboundMessage($message);
         $ruleInterpretation = $this->conversationInterpretationService->interpret((string) $message->content);
         $ruleInterpretation = $this->continueInterpretationFromHistory($message, $conv, $ruleInterpretation);
-
-        $guard = $this->guardrailService->check($lead, $conv);
-        if ($guard->blocked) {
-            Log::info('[AgentOrchestrator] Guardrail blocked', [
-                'tenant_id'      => $lead->tenant_id,
-                'lead_id'        => $lead->id,
-                'reason'         => $guard->reason,
-            ]);
-            $this->logNoReplyExit($lead, $conv, $message, 'guardrail_blocked', [
-                'guardrail_reason' => $guard->reason,
-            ]);
-            return;
-        }
-
-        $agent = $conv->whatsapp_agent_id ? WhatsAppAgent::find($conv->whatsapp_agent_id) : null;
-        if (! $agent) {
-            Log::warning('[AgentOrchestrator] No agent to dispatch with', [
-                'conversation_id' => $conv->id,
-            ]);
-            $this->logNoReplyExit($lead, $conv, $message, 'missing_whatsapp_agent', [
-                'whatsapp_agent_id' => $conv->whatsapp_agent_id,
-            ]);
-            return;
-        }
 
         $usedDirectPricelistShortcut = $this->matchesDirectPricelistShortcut($message, $conv);
 
@@ -179,7 +164,7 @@ class TurnPipelineService
                         return;
                     }
 
-                    $this->logNoReplyExit($lead, $conv, $message, 'classifier_failed_no_rule_intent_no_dispatch', [
+                    $this->logTurnOutcome($lead, $conv, $message, TurnOutcomeType::NoReplyClassifierFailedNoRule, [
                         'error' => $e->getMessage(),
                     ]);
                     return;
@@ -262,9 +247,17 @@ class TurnPipelineService
         );
 
         if ($dispatchResult->noReplyReason !== null) {
-            $this->logNoReplyExit($lead, $conv, $message, $dispatchResult->noReplyReason, [
-                'decision_source' => 'turn_decision_service',
-            ]);
+            $this->logTurnOutcome(
+                $lead,
+                $conv,
+                $message,
+                TurnOutcomeType::NoReplyDispatchDecision,
+                [
+                    'decision_source' => 'turn_decision_service',
+                    'dispatch_reason' => $dispatchResult->noReplyReason,
+                ],
+                detail: $dispatchResult->noReplyReason,
+            );
             return;
         }
 
@@ -1195,7 +1188,7 @@ class TurnPipelineService
     ): bool
     {
         if (! $this->isTransientLlmFailure($e)) {
-            $this->logNoReplyExit($lead, $conv, $message, 'fallback_not_dispatched_non_transient_error', [
+            $this->logTurnOutcome($lead, $conv, $message, TurnOutcomeType::NoReplyFallbackNonTransientError, [
                 'error' => $e->getMessage(),
                 'error_type' => get_class($e),
             ]);
@@ -1204,7 +1197,7 @@ class TurnPipelineService
 
         $agent = $conv->whatsapp_agent_id ? WhatsAppAgent::find($conv->whatsapp_agent_id) : null;
         if (! $agent || ! $agent->isConnected()) {
-            $this->logNoReplyExit($lead, $conv, $message, 'fallback_not_dispatched_agent_unavailable', [
+            $this->logTurnOutcome($lead, $conv, $message, TurnOutcomeType::NoReplyFallbackAgentUnavailable, [
                 'whatsapp_agent_id' => $conv->whatsapp_agent_id,
                 'agent_found' => $agent !== null,
                 'agent_connected' => $agent?->isConnected() ?? false,
@@ -1271,7 +1264,7 @@ class TurnPipelineService
         );
 
         if (trim((string) ($fallback['message'] ?? '')) === '') {
-            $this->logNoReplyExit($lead, $conv, $message, 'classifier_fallback_empty_message', [
+            $this->logTurnOutcome($lead, $conv, $message, TurnOutcomeType::NoReplyClassifierFallbackEmpty, [
                 'fallback_reason' => $reason,
             ]);
             return null;
@@ -1703,26 +1696,22 @@ class TurnPipelineService
         return $this->turnDecisionService->decide($input);
     }
 
-    private function logNoReplyExit(
+    /**
+     * Delegates to the shared TurnOutcomeLogger so lifecycle and pipeline
+     * branches share a single end-of-turn outcome writer
+     * (System Audit Report §15 / WS-7).
+     *
+     * @param  array<string, mixed>  $context
+     */
+    private function logTurnOutcome(
         Lead $lead,
         Conversation $conv,
         Message $message,
-        string $reason,
+        TurnOutcomeType $outcome,
         array $context = [],
-        TurnOutcomeType $outcomeType = TurnOutcomeType::NoReply,
+        ?string $detail = null,
     ): void {
-        $payload = array_merge([
-            'tenant_id' => $lead->tenant_id,
-            'lead_id' => $lead->id,
-            'conversation_id' => $conv->id,
-            'message_id' => $message->id,
-            'stage' => $conv->stageEnum()->value,
-            'outcome' => $outcomeType->value,
-            'reason' => $reason,
-        ], $context);
-
-        Log::warning(sprintf('[AgentOrchestrator] No reply exit: %s', $reason), $payload);
-        AgentLog::warning('turn.no_reply_exit', $payload);
+        $this->outcomeLogger()->log($lead, $conv, $message, $outcome, $context, $detail);
     }
 
     private function createQualityFilterHandoffIfNeeded(

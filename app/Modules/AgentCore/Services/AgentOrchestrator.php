@@ -52,6 +52,8 @@ class AgentOrchestrator
         private readonly TurnDecisionServiceInterface $turnDecisionService,
         private readonly ActionDispatcher $actionDispatcher,
     ) {
+        $turnOutcomeLogger = new TurnOutcomeLogger($this->conversationStateService);
+
         $this->turnPipelineService = new TurnPipelineService(
             $this->llm,
             $this->contextAssembler,
@@ -75,11 +77,14 @@ class AgentOrchestrator
             $this->fallbackGuardService,
             $this->turnDecisionService,
             $this->actionDispatcher,
+            $turnOutcomeLogger,
         );
 
         $this->turnLifecycleService = new TurnLifecycleService(
             $this->turnPipelineService,
             $this->responseEvaluatorService,
+            $this->guardrailService,
+            $turnOutcomeLogger,
         );
     }
 

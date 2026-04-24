@@ -17,6 +17,7 @@ use App\Modules\AgentCore\Services\HumanizerService;
 use App\Modules\Booking\Enums\FormType;
 use App\Modules\Booking\Services\BookingSchemaService;
 use App\Modules\Conversations\Enums\HandoffReason;
+use App\Modules\Conversations\Enums\ConversationStage;
 use App\Modules\Conversations\Models\Conversation;
 use App\Modules\Conversations\Models\Message;
 use App\Modules\Conversations\Services\ConversationStateService;
@@ -61,10 +62,20 @@ final class ActionDispatcher
             FinalAction::GuideToBooking => $this->dispatchGuideToBooking($decision, $context),
             FinalAction::AskForBookingField => $this->dispatchBookingFieldReply($context),
             FinalAction::ReplyWithPricelist => $this->dispatchPricelist($decision, $context),
+            FinalAction::ReplyWithPackageDetails => $this->dispatchPackageDetails($decision, $context),
             FinalAction::ReplyWithGroundedPackage => $this->dispatchGroundedPackage($decision, $context),
             FinalAction::ReplyWithFallback => $this->dispatchFallback($decision, $context),
             default => ActionDispatchResult::continueToResponse(),
         };
+    }
+
+    private function dispatchPackageDetails(FinalTurnDecision $decision, TurnDispatchContext $context): ActionDispatchResult
+    {
+        if (! $this->shouldUseGroundedPackageReply($context->conversation)) {
+            return ActionDispatchResult::continueToResponse();
+        }
+
+        return $this->dispatchGroundedPackage($decision, $context);
     }
 
     private function dispatchOptOut(TurnDispatchContext $context): ActionDispatchResult
@@ -400,6 +411,18 @@ final class ActionDispatcher
             ->setTool('grounded_package_reply');
 
         return ActionDispatchResult::stop(shouldRefreshSummary: true);
+    }
+
+    private function shouldUseGroundedPackageReply(Conversation $conversation): bool
+    {
+        return in_array($conversation->stageEnum(), [
+            ConversationStage::PackageRecommendation,
+            ConversationStage::ObjectionHandling,
+            ConversationStage::PaymentDiscussion,
+            ConversationStage::Closing,
+            ConversationStage::Booked,
+            ConversationStage::FollowUp,
+        ], true);
     }
 
     private function dispatchFallback(FinalTurnDecision $decision, TurnDispatchContext $context): ActionDispatchResult

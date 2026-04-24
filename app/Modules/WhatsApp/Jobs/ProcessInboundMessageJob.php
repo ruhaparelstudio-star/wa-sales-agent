@@ -130,19 +130,31 @@ class ProcessInboundMessageJob implements ShouldQueue
                     if ($ingestService->isMediaMessage($message)) {
                         $mediaHandler->handleInboundMedia($message, $tenant);
 
+                        // Finalize next_best_action even for the no-reply media path
+                        // so the column is not left null between turns
+                        // (System Audit Report §14 / WS-6).
+                        $conversationStateService->recordNoReplyOutcome(
+                            $message->conversation,
+                            $message->lead,
+                            TurnOutcomeType::NoReplyMediaReceived->value,
+                        );
+
                         // Media path intentionally does not dispatch an auto-reply today.
                         // Log an honest no-reply outcome so observability matches behavior
                         // (previously this logged "Media auto-reply queued" without ever
                         // queueing a send — see System Audit Report §17 / WS-8).
-                        AgentLog::info('turn.no_reply_exit', [
+                        $mediaOutcomePayload = [
                             'tenant_id' => $message->tenant_id,
                             'lead_id' => $message->lead_id,
                             'conversation_id' => $message->conversation_id,
                             'message_id' => $message->id,
                             'message_type' => $message->message_type,
-                            'outcome' => TurnOutcomeType::NoReply->value,
-                            'reason' => 'media_received_no_auto_reply',
-                        ]);
+                            'outcome' => TurnOutcomeType::NoReplyMediaReceived->value,
+                            'reason' => TurnOutcomeType::NoReplyMediaReceived->value,
+                        ];
+                        AgentLog::info('turn.outcome', $mediaOutcomePayload);
+                        // Backward-compatible alias for existing log consumers.
+                        AgentLog::info('turn.no_reply_exit', $mediaOutcomePayload);
 
                         $duplicateGuard->markInboundProcessed($receipt, $message);
                         return;

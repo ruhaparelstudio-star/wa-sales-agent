@@ -2,6 +2,8 @@
 
 namespace App\Modules\WhatsApp\Services;
 
+use App\Modules\AgentCore\Enums\TurnOutcomeType;
+use App\Modules\AgentCore\Support\AgentLog;
 use App\Modules\Conversations\Enums\MessageDirection;
 use App\Modules\Conversations\Enums\MessageStatus;
 use App\Modules\Conversations\Enums\MessageType;
@@ -29,9 +31,10 @@ class OutboundDispatchService
         $content = trim($content);
 
         if ($content === '') {
-            Log::warning('[OutboundDispatch] Empty outbound message skipped', [
+            $this->logOutboundSkip(TurnOutcomeType::NoReplyOutboundEmpty, [
                 'agent_id' => $agent->id,
                 'to' => $to,
+                'channel' => 'text',
             ]);
             return;
         }
@@ -39,9 +42,10 @@ class OutboundDispatchService
         $to = $this->normalizeOutgoingRecipient($to);
 
         if (! $agent->isConnected()) {
-            Log::warning('[OutboundDispatch] Agent not connected, dropping message', [
+            $this->logOutboundSkip(TurnOutcomeType::NoReplyAgentDisconnected, [
                 'agent_id' => $agent->id,
                 'to' => $to,
+                'channel' => 'text',
             ]);
             return;
         }
@@ -61,10 +65,11 @@ class OutboundDispatchService
             );
 
             if ($this->duplicateGuard->shouldSkipOutbound($dispatch)) {
-                Log::info('[OutboundDispatch] Duplicate outbound send skipped', [
+                $this->logOutboundSkip(TurnOutcomeType::NoReplyOutboundDuplicate, [
                     'agent_id' => $agent->id,
                     'to' => $to,
                     'idempotency_key' => $idempotencyKey,
+                    'channel' => 'text',
                 ]);
                 return;
             }
@@ -111,10 +116,11 @@ class OutboundDispatchService
         $to = $this->normalizeOutgoingRecipient($to);
 
         if (! $agent->isConnected()) {
-            Log::warning('[OutboundDispatch] Agent not connected, dropping document', [
+            $this->logOutboundSkip(TurnOutcomeType::NoReplyAgentDisconnected, [
                 'agent_id' => $agent->id,
                 'to' => $to,
                 'filename' => $filename,
+                'channel' => 'document',
             ]);
 
             return;
@@ -143,11 +149,12 @@ class OutboundDispatchService
             );
 
             if ($this->duplicateGuard->shouldSkipOutbound($dispatch)) {
-                Log::info('[OutboundDispatch] Duplicate outbound document skipped', [
+                $this->logOutboundSkip(TurnOutcomeType::NoReplyOutboundDuplicate, [
                     'agent_id' => $agent->id,
                     'to' => $to,
                     'filename' => $filename,
                     'idempotency_key' => $idempotencyKey,
+                    'channel' => 'document',
                 ]);
                 return;
             }
@@ -221,10 +228,11 @@ class OutboundDispatchService
         $content = trim($content);
 
         if ($content === '') {
-            Log::warning('[OutboundDispatch] Empty outbound message not queued', [
+            $this->logOutboundSkip(TurnOutcomeType::NoReplyOutboundEmpty, [
                 'agent_id' => $agent->id,
                 'to' => $to,
                 'queue' => $queue,
+                'channel' => 'queue_text',
             ]);
             return;
         }
@@ -245,6 +253,23 @@ class OutboundDispatchService
             idempotencyKey: $idempotencyKey,
             delaySeconds: $delaySeconds,
         )->onQueue($queue);
+    }
+
+    /**
+     * Emit a structured skip outcome aligned with the AgentCore turn-outcome
+     * contract (System Audit Report §15 / WS-7).
+     *
+     * @param  array<string, mixed>  $context
+     */
+    private function logOutboundSkip(TurnOutcomeType $outcome, array $context): void
+    {
+        $payload = array_merge([
+            'outcome' => $outcome->value,
+            'reason' => $outcome->value,
+        ], $context);
+
+        Log::warning(sprintf('[OutboundDispatch] Skipped: %s', $outcome->value), $payload);
+        AgentLog::warning('turn.outcome', $payload);
     }
 
     private function recordOutboundMessage(

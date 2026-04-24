@@ -5,6 +5,7 @@ namespace App\Modules\AgentCore\Services;
 use App\Modules\AgentCore\Contracts\LlmClientInterface;
 use App\Modules\AgentCore\DTOs\LlmResponse;
 use App\Modules\AgentCore\Enums\LlmMode;
+use OpenAI\Responses\Responses\CreateResponse;
 use OpenAI\Contracts\ClientContract;
 use RuntimeException;
 
@@ -36,7 +37,7 @@ class OpenAiLlmClient implements LlmClientInterface
 
             $content = $response->outputText;
             if ($content === null || trim($content) === '') {
-                throw new RuntimeException('OpenAI returned empty response output_text.');
+                throw new RuntimeException($this->emptyResponsesApiMessage($response));
             }
 
             return new LlmResponse(
@@ -81,7 +82,7 @@ class OpenAiLlmClient implements LlmClientInterface
             'max_completion_tokens' => $maxCompletionTokens,
         ];
 
-        if (array_key_exists('temperature', $options)) {
+        if (array_key_exists('temperature', $options) && $this->supportsTemperatureOverride()) {
             $payload['temperature'] = (float) $options['temperature'];
         }
 
@@ -101,7 +102,7 @@ class OpenAiLlmClient implements LlmClientInterface
             'max_output_tokens' => $maxCompletionTokens,
         ];
 
-        if (array_key_exists('temperature', $options)) {
+        if (array_key_exists('temperature', $options) && $this->supportsTemperatureOverride()) {
             $payload['temperature'] = (float) $options['temperature'];
         }
 
@@ -119,6 +120,33 @@ class OpenAiLlmClient implements LlmClientInterface
     private function usesResponsesApi(): bool
     {
         return str_starts_with($this->model, 'gpt-5');
+    }
+
+    private function emptyResponsesApiMessage(CreateResponse $response): string
+    {
+        $details = ['status=' . $response->status];
+
+        if ($response->error?->message) {
+            $details[] = 'error=' . $response->error->message;
+        }
+
+        if ($response->incompleteDetails?->reason) {
+            $details[] = 'incomplete_reason=' . $response->incompleteDetails->reason;
+        }
+
+        if ($response->output !== []) {
+            $details[] = 'output_items=' . count($response->output);
+        }
+
+        return 'OpenAI returned empty response output_text (' . implode(', ', $details) . ').';
+    }
+
+    private function supportsTemperatureOverride(): bool
+    {
+        // gpt-5 family (and other reasoning models) only accept the default temperature.
+        return ! str_starts_with($this->model, 'gpt-5')
+            && ! str_starts_with($this->model, 'o1')
+            && ! str_starts_with($this->model, 'o3');
     }
 
     /**

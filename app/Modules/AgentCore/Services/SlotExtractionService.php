@@ -5,6 +5,36 @@ namespace App\Modules\AgentCore\Services;
 class SlotExtractionService
 {
     /**
+     * @param  mixed  $value
+     */
+    public static function sanitizeLocationCandidate(mixed $value): ?string
+    {
+        if (! is_scalar($value)) {
+            return null;
+        }
+
+        $location = trim((string) $value);
+        $location = preg_replace('/\s+(jam|tanggal|budget|paket|harga)\b.*$/u', '', $location) ?? $location;
+        $location = trim($location, " .,-");
+
+        if ($location === '') {
+            return null;
+        }
+
+        $normalized = mb_strtolower($location);
+
+        if (preg_match('/^(jelas(?:kan)?|bantu|kirim|share|minta|mau|lihat|tau|tahu|fokus|detail|isi|paket|harga|yang|aja|saja|tolong)\b/u', $normalized) === 1) {
+            return null;
+        }
+
+        if (preg_match('/^(ya|ka|kak|dong|deh)\b/u', $normalized) === 1) {
+            return null;
+        }
+
+        return ucwords($normalized);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function extract(string $content): array
@@ -101,11 +131,7 @@ class SlotExtractionService
     private function extractLocation(string $content): ?string
     {
         if (preg_match('/(?:lokasi(?:nya)?|venue(?:nya)?|acara(?:nya)? di|di)\s+([a-z0-9 .,-]{3,60})/u', $content, $m)) {
-            $location = trim($m[1]);
-            $location = preg_replace('/\s+(jam|tanggal|budget|paket|harga)\b.*$/u', '', $location) ?? $location;
-            $location = trim($location, " .,-");
-
-            return $location !== '' ? ucwords($location) : null;
+            return self::sanitizeLocationCandidate($m[1]);
         }
 
         return null;

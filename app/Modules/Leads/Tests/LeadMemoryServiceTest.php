@@ -76,6 +76,24 @@ test('upsert skips invalid event date but still saves other valid fields', funct
         ->and($memory->event_date)->toBeNull();
 });
 
+test('upsert skips invalid event location phrases that are not real locations', function () {
+    $tenant = Tenant::factory()->create();
+    $lead   = Lead::factory()->create(['tenant_id' => $tenant->id]);
+
+    makeLeadMemoryService()->upsert($lead, [
+        'name' => 'Siti',
+        'event_location' => 'Jelaskan Saja Ka',
+    ]);
+
+    $memory = $lead->fresh()->memory;
+    $snapshot = makeLeadMemoryService()->getSnapshot($lead->fresh()->load('memory'));
+
+    expect($memory)->not->toBeNull()
+        ->and($memory->name)->toBe('Siti')
+        ->and($memory->event_location)->toBeNull()
+        ->and($snapshot)->not->toHaveKey('event_location');
+});
+
 test('upsert merges json array fields instead of overwriting', function () {
     $tenant = Tenant::factory()->create();
     $lead   = Lead::factory()->create(['tenant_id' => $tenant->id]);

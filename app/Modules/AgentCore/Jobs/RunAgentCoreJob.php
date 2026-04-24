@@ -4,6 +4,7 @@ namespace App\Modules\AgentCore\Jobs;
 
 use App\Modules\AgentCore\Services\AgentOrchestrator;
 use App\Modules\AgentCore\Support\AgentLog;
+use App\Modules\Conversations\Enums\MessageDirection;
 use App\Modules\Conversations\Models\Message;
 use App\Modules\Conversations\Services\ConversationLockService;
 use Illuminate\Bus\Queueable;
@@ -65,6 +66,28 @@ class RunAgentCoreJob implements ShouldQueue
             Log::info('[RunAgentCore] Automation paused, skipping', [
                 'trace_id' => $traceId,
                 'lead_id' => $lead->id,
+            ]);
+            return;
+        }
+
+        // Skip turns that have been superseded by a newer inbound message in
+        // the same conversation. A second-level check exists in
+        // TurnLifecycleService for defense in depth (System Audit Report
+        // §16 / WS-9).
+        $hasNewerInbound = $conv->messages()
+            ->where('direction', MessageDirection::Inbound->value)
+            ->where('id', '>', $message->id)
+            ->exists();
+
+        if ($hasNewerInbound) {
+            AgentLog::info('turn.superseded', [
+                'lead_id' => $lead->id,
+                'conv' => $conv->id,
+                'message_id' => $message->id,
+            ]);
+            Log::info('[RunAgentCore] Superseded by newer inbound, skipping', [
+                'trace_id' => $traceId,
+                'message_id' => $message->id,
             ]);
             return;
         }

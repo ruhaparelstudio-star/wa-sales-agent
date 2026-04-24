@@ -2,6 +2,7 @@
 
 namespace App\Modules\Leads\Services;
 
+use App\Modules\AgentCore\Services\SlotExtractionService;
 use App\Modules\Leads\Models\Lead;
 use App\Modules\Leads\Models\LeadMemory;
 use Illuminate\Support\Facades\Log;
@@ -60,7 +61,7 @@ class LeadMemoryService
         return array_filter([
             'name' => $memory->name,
             'event_date' => $memory->event_date?->toDateString(),
-            'event_location' => $memory->event_location,
+            'event_location' => SlotExtractionService::sanitizeLocationCandidate($memory->event_location),
             'budget_min' => $memory->budget_min,
             'budget_max' => $memory->budget_max,
             'service_type' => $memory->service_type ?? $tenantServiceType,
@@ -78,6 +79,16 @@ class LeadMemoryService
 
     private function normalizeFieldValue(string $key, mixed $value): mixed
     {
+        if ($key === 'event_location') {
+            $normalized = SlotExtractionService::sanitizeLocationCandidate($value);
+
+            if ($normalized === null) {
+                $this->logSkippedField($key, $value, 'invalid_location_value');
+            }
+
+            return $normalized;
+        }
+
         if ($key !== 'event_date') {
             return $value;
         }

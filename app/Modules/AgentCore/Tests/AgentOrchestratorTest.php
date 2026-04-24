@@ -883,6 +883,54 @@ test('direct wedding package inquiry prefers wedding package knowledge and answe
     Queue::assertNotPushed(SendOutboundDocumentJob::class);
 });
 
+test('package inquiry in package recommendation uses grounded package handler even when generic response model is unavailable', function () {
+    ['tenant' => $tenant, 'lead' => $lead, 'conv' => $conv, 'message' => $message] = setupInboundScenario();
+    $message->update(['content' => 'Paketnya ka']);
+    $conv->update(['stage' => ConversationStage::PackageRecommendation]);
+
+    LeadMemory::query()->create([
+        'tenant_id' => $tenant->id,
+        'lead_id' => $lead->id,
+        'service_type' => 'wedding',
+        'event_date' => '2026-12-30',
+        'event_location' => 'Bekasi',
+    ]);
+
+    KnowledgeItem::factory()->package()->forTenant($tenant)->create([
+        'title' => 'WEDDING PACKAGE',
+        'sort_order' => 0,
+        'content' => "1. Photo + Album\n- Durasi: 11 jam\n- Tim: 1 fotografer\n- Include: album leather cover\n- Harga: Rp 1.995.000",
+    ]);
+
+    $llm = new FakeLlmClient();
+    $llm->queueResponse(json_encode([
+        'intent' => 'tanya_paket',
+        'sentiment' => 'positive',
+        'extracted_fields' => [
+            'service_type' => 'wedding',
+            'pricing_focus' => 'package_only',
+        ],
+        'needs_handoff' => false,
+        'handoff_reason' => null,
+        'confidence' => 0.9,
+        'current_stage' => 'package_recommendation',
+        'suggested_next_stage' => 'package_recommendation',
+        'missing_critical_fields' => [],
+    ]));
+
+    buildOrchestrator($llm)->handleInbound($message, $lead, $conv->fresh());
+
+    expect($llm->calls)->toHaveCount(1);
+
+    Queue::assertPushed(SendOutboundMessageJob::class, function ($job) {
+        $content = mb_strtolower($job->content);
+
+        return str_contains($content, 'photo + album')
+            && ! str_contains($content, 'fokus ke isi paket dulu')
+            && ! str_contains($content, 'kalau mau lihat bagian tertentu');
+    });
+});
+
 test('direct pricelist inquiry auto-promotes stage and queues pricelist pdf', function () {
     ['tenant' => $tenant, 'lead' => $lead, 'conv' => $conv, 'message' => $message] = setupInboundScenario();
     $message->update(['content' => 'minta pricelist dong kak']);

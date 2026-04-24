@@ -145,6 +145,12 @@ test('pricing clarification captures whether user wants price, package, or both'
     expect($result->slots['pricing_focus'])->toBe('price_and_package');
 });
 
+test('location extraction ignores generic explanation phrasing', function () {
+    $result = makeInterpretationService()->interpret('Boleh di jelaskan saja ka');
+
+    expect($result->slots)->not->toHaveKey('location');
+});
+
 test('toClassifierOutput creates safe fallback classifier from interpretation', function () {
     $interpretation = makeInterpretationService()->interpret('Tanggal 12 desember 2026 masih available ga?');
     $classifier = makeInterpretationService()->toClassifierOutput($interpretation, ConversationStage::Qualification);

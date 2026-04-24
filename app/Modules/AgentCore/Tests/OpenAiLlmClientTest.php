@@ -7,6 +7,7 @@ use OpenAI\Contracts\Resources\ChatContract;
 use OpenAI\Contracts\Resources\ResponsesContract;
 use OpenAI\Responses\Chat\CreateResponse as ChatCreateResponse;
 use OpenAI\Responses\Responses\CreateResponse as ResponsesCreateResponse;
+use OpenAI\Testing\Enums\OverrideStrategy;
 
 test('gpt 5 models use responses api output text', function () {
     $responses = \Mockery::mock(ResponsesContract::class);
@@ -15,7 +16,7 @@ test('gpt 5 models use responses api output text', function () {
         ->with(\Mockery::on(function (array $payload): bool {
             expect($payload['model'])->toBe('gpt-5-mini')
                 ->and($payload['max_output_tokens'])->toBe(123)
-                ->and($payload['temperature'])->toBe(0.1)
+                ->and(array_key_exists('temperature', $payload))->toBeFalse()
                 ->and($payload['input'][0]['role'])->toBe('system')
                 ->and($payload['input'][0]['content'][0]['type'])->toBe('input_text')
                 ->and($payload['input'][1]['role'])->toBe('user')
@@ -159,4 +160,26 @@ test('non gpt 5 models keep using chat completions', function () {
 
     expect($response->content)->toBe('Hi there')
         ->and($response->totalTokens)->toBe(7);
+});
+
+test('empty responses api output reports response status details', function () {
+    $responses = \Mockery::mock(ResponsesContract::class);
+    $responses->shouldReceive('create')
+        ->once()
+        ->andReturn(ResponsesCreateResponse::fake([
+            'status' => 'incomplete',
+            'incomplete_details' => [
+                'reason' => 'max_output_tokens',
+            ],
+            'output' => [],
+        ], strategy: OverrideStrategy::Replace));
+
+    $client = \Mockery::mock(ClientContract::class);
+    $client->shouldReceive('responses')->once()->andReturn($responses);
+
+    $llm = new OpenAiLlmClient($client, 'gpt-5-mini');
+
+    expect(fn () => $llm->complete([
+        ['role' => 'user', 'content' => 'Halo'],
+    ]))->toThrow(RuntimeException::class, 'status=incomplete, incomplete_reason=max_output_tokens');
 });
