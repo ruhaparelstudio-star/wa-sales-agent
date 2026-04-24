@@ -11,6 +11,7 @@ enum FinalAction: string
     case AskForBookingField = 'ask_for_booking_field';
     case GuideToBooking = 'guide_to_booking';
     case RequestHumanHandoff = 'request_human_handoff';
+    case ReplyWithOptOut = 'reply_with_opt_out';
     case ReplyWithFallback = 'reply_with_fallback';
     case DoNotReply = 'do_not_reply';
 

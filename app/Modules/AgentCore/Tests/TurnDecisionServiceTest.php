@@ -202,3 +202,30 @@ test('turn decision service supports handoff required decisions', function () {
         ->and($decision->finalDecision['requires_handoff'])->toBeTrue()
         ->and($decision->finalDecision['stage_after'])->toBe(ConversationStage::HandoffToHuman->value);
 });
+
+test('opt_out intent resolves to ReplyWithOptOut action, not generic handoff', function () {
+    $decision = (new TurnDecisionService())->decide(makeTurnDecisionInput([
+        'ruleInterpretation' => new InterpretationResult(
+            canonicalIntent: 'opt_out',
+            legacyIntent: 'opt_out',
+            slots: [],
+            confidence: 0.95,
+            source: 'rules',
+        ),
+        'classifierResult' => new ClassifierOutput(
+            intent: 'opt_out',
+            sentiment: 'neutral',
+            extractedFields: [],
+            needsHandoff: true,
+            handoffReason: 'opt_out',
+            confidence: 0.95,
+            currentStage: ConversationStage::Qualification,
+            suggestedNextStage: ConversationStage::HandoffToHuman,
+            missingCriticalFields: [],
+        ),
+    ]));
+
+    expect($decision->finalDecision['action'])->toBe(FinalAction::ReplyWithOptOut)
+        ->and($decision->finalDecision['requires_handoff'])->toBeTrue()
+        ->and($decision->finalDecision['stage_after'])->toBe(ConversationStage::HandoffToHuman->value);
+});

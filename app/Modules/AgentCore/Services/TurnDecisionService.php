@@ -254,7 +254,14 @@ class TurnDecisionService implements TurnDecisionServiceInterface
             return FinalAction::DoNotReply;
         }
 
-        if ($negativeSentiment || $handoffRequired || in_array($finalIntent, ['availability', 'custom_package', 'payment_proof', 'opt_out'], true)) {
+        // Opt-out has a specific confirmation message + automation pause semantics,
+        // different from a generic human handoff. Keep it as its own action so the
+        // dispatcher can pick the opt-out-specific flow.
+        if ($finalIntent === 'opt_out') {
+            return FinalAction::ReplyWithOptOut;
+        }
+
+        if ($negativeSentiment || $handoffRequired || in_array($finalIntent, ['availability', 'custom_package', 'payment_proof'], true)) {
             return FinalAction::RequestHumanHandoff;
         }
 
@@ -283,6 +290,7 @@ class TurnDecisionService implements TurnDecisionServiceInterface
             FinalAction::AskForBookingField => ResponseMode::BusinessPayloadToResponder,
             FinalAction::ReplyWithFallback => ResponseMode::FallbackText,
             FinalAction::RequestHumanHandoff => ResponseMode::HandoffNotice,
+            FinalAction::ReplyWithOptOut => ResponseMode::DirectText,
             FinalAction::DoNotReply => ResponseMode::NoReply,
             default => ResponseMode::DirectText,
         };
@@ -297,7 +305,7 @@ class TurnDecisionService implements TurnDecisionServiceInterface
             return $currentStage;
         }
 
-        if ($action === FinalAction::RequestHumanHandoff) {
+        if ($action === FinalAction::RequestHumanHandoff || $action === FinalAction::ReplyWithOptOut) {
             return ConversationStage::HandoffToHuman;
         }
 
